@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>漏扫报告 AI 分析工具</title>
+<style>
+:root{
+  --bg:#0f1419; --bg2:#161d26; --bg3:#1d2733; --line:#2a3646;
+  --fg:#dde6f0; --fg2:#8fa3b8; --fg3:#5f7185;
+  --acc:#3d9df6; --acc2:#1f6fd0; --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c;
+  --mono:"Cascadia Code","JetBrains Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--fg);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  padding:0 0 60px;
+}
+header{
+  background:linear-gradient(135deg,#141c26,#1b2735);
+  border-bottom:1px solid var(--line);
+  padding:18px 28px 0;
+  position:sticky; top:0; z-index:50;
+}
+h1{margin:0;font-size:19px;font-weight:600;letter-spacing:.3px}
+h1 span{color:var(--acc)}
+.sub{color:var(--fg2);font-size:12.5px;margin-top:4px}
+.steps{display:flex;gap:4px;margin-top:14px;flex-wrap:wrap}
+.steps button{
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--fg3);padding:9px 16px;cursor:pointer;font-size:13.5px;font-family:inherit;
+  transition:.15s;
+}
+.steps button:hover{color:var(--fg)}
+.steps button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+.steps button .n{
+  display:inline-block;width:18px;height:18px;line-height:18px;text-align:center;
+  border-radius:50%;background:var(--bg3);font-size:11px;margin-right:6px;color:var(--fg2);
+}
+.steps button.on .n{background:var(--acc);color:#fff}
+main{max-width:1180px;margin:0 auto;padding:24px 28px}
+section{display:none}
+section.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h2 small{font-weight:400;color:var(--fg3);font-size:12px}
+p.hint{color:var(--fg2);font-size:12.5px;margin:6px 0 12px}
+textarea,input[type=text],input[type=password],select{
+  width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  color:var(--fg);padding:9px 11px;font-family:var(--mono);font-size:12.5px;
+  outline:none;transition:.15s;
+}
+textarea:focus,input:focus,select:focus{border-color:var(--acc)}
+textarea{resize:vertical;line-height:1.55}
+button.btn{
+  background:var(--acc2);color:#fff;border:none;border-radius:6px;
+  padding:9px 18px;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500;
+  transition:.15s;
+}
+button.btn:hover{background:var(--acc)}
+button.btn:disabled{background:var(--bg3);color:var(--fg3);cursor:not-allowed}
+button.ghost{background:none;border:1px solid var(--line);color:var(--fg2)}
+button.ghost:hover{border-color:var(--acc);color:var(--acc);background:none}
+button.sm{padding:5px 11px;font-size:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+.drop{
+  border:2px dashed var(--line);border-radius:10px;padding:34px;text-align:center;
+  color:var(--fg2);cursor:pointer;transition:.15s;background:var(--bg);
+}
+.drop:hover,.drop.dragover{border-color:var(--acc);color:var(--acc);background:#152030}
+.drop b{color:var(--fg)}
+.tag{display:inline-block;background:var(--bg3);border:1px solid var(--line);border-radius:4px;
+  padding:2px 8px;font-size:11.5px;font-family:var(--mono);color:var(--fg2);margin:2px 3px 2px 0}
+.tag.ip{color:#7ec8ff;border-color:#274b6b}
+.tag.dom{color:#b48ef0;border-color:#42316b}
+.tag.mail{color:#f0b46b;border-color:#6b4f31}
+.stat{display:flex;gap:22px;flex-wrap:wrap;margin:10px 0 4px}
+.stat div{font-size:12.5px;color:var(--fg2)}
+.stat b{display:block;font-size:20px;color:var(--fg);font-family:var(--mono);font-weight:600}
+pre{
+  background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  padding:12px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.5;
+  max-height:340px;margin:0;white-space:pre-wrap;word-break:break-all;
+}
+.badge{font-size:11px;padding:1px 7px;border-radius:3px;font-family:var(--mono)}
+.b-ok{background:#12351f;color:#4ade80;border:1px solid #1e5c33}
+.b-warn{background:#3a2a10;color:#fbbf24;border:1px solid #6b4a15}
+.b-err{background:#3a1414;color:#f87171;border:1px solid #6b1f1f}
+.note{background:#152030;border-left:3px solid var(--acc);padding:10px 14px;border-radius:0 6px 6px 0;
+  font-size:12.5px;color:var(--fg2);margin:12px 0}
+.note.warn{background:#2a2113;border-left-color:var(--warn)}
+.note.err{background:#2a1414;border-left-color:var(--err)}
+table.data{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+table.data th,table.data td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+table.data th{background:var(--bg3);color:var(--fg2);font-weight:600;position:sticky;top:0}
+table.data tr:nth-child(even){background:#131a23}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg2);cursor:pointer;
+  margin-right:16px;user-select:none}
+.chk input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer}
+#mdOut{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:18px 22px;
+  font-size:13.5px;line-height:1.75;max-height:640px;overflow:auto}
+#mdOut h1,#mdOut h2,#mdOut h3,#mdOut h4{color:#fff;margin:18px 0 8px;line-height:1.35}
+#mdOut h1{font-size:19px;border-bottom:1px solid var(--line);padding-bottom:6px}
+#mdOut h2{font-size:16.5px;border-bottom:1px solid #233040;padding-bottom:5px}
+#mdOut h3{font-size:14.5px}
+#mdOut code{background:#0a1016;border:1px solid #233040;border-radius:3px;padding:1px 5px;
+  font-family:var(--mono);font-size:12px;color:#7ec8ff}
+#mdOut pre code{background:none;border:none;padding:0;color:var(--fg)}
+#mdOut pre{max-height:none;margin:10px 0}
+#mdOut table{width:100%;border-collapse:collapse;font-size:12.5px;margin:10px 0}
+#mdOut th,#mdOut td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+#mdOut th{background:var(--bg3)}
+#mdOut blockquote{border-left:3px solid var(--warn);margin:10px 0;padding:6px 14px;color:var(--fg2)}
+#mdOut ul,#mdOut ol{padding-left:22px;margin:8px 0}
+#mdOut li{margin:3px 0}
+#mdOut a{color:var(--acc)}
+#mdOut hr{border:none;border-top:1px solid var(--line);margin:16px 0}
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--acc2);color:#fff;padding:11px 22px;border-radius:8px;font-size:13px;
+  opacity:0;transition:.25s;z-index:999;pointer-events:none;box-shadow:0 6px 20px #0008;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--err)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid #fff5;border-top-color:#fff;
+  border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.split,.g2,.g3{grid-template-columns:1fr}}
+.filename{color:var(--fg);font-family:var(--mono);font-size:12.5px}
+.mini{font-size:11.5px;color:var(--fg3)}
+/* ===== 修复验证 Diff / 优先级重算 新增样式 ===== */
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:1100px){.col3{grid-template-columns:1fr}}
+.res-card{background:var(--bg3);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.res-head{padding:10px 14px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center}
+.res-head .cnt{font-family:var(--mono);font-size:12px;color:var(--fg2)}
+.res-body{max-height:460px;overflow:auto;padding:8px}
+.res-item{background:var(--bg2);border:1px solid #24303f;border-left:3px solid var(--line);
+  border-radius:5px;padding:8px 10px;margin-bottom:6px;font-size:12px;line-height:1.5}
+.res-item .t{font-weight:600;color:var(--fg);margin-bottom:3px}
+.res-item .m{font-family:var(--mono);font-size:11.5px;color:var(--fg2);word-break:break-all}
+.res-item.fixed{border-left-color:var(--ok)}
+.res-item.remain{border-left-color:var(--warn)}
+.res-item.added{border-left-color:var(--err)}
+.res-item.probable{border-left-color:#8e7cf0}
+.sev{display:inline-block;padding:0 6px;border-radius:3px;font-size:10.5px;font-family:var(--mono);
+  margin-right:4px;vertical-align:1px}
+.sv-critical{background:#4a0f14;color:#ff8a8a;border:1px solid #7a1f28}
+.sv-high{background:#4a2410;color:#ffb070;border:1px solid #7a4020}
+.sv-medium{background:#463a10;color:#f5d76e;border:1px solid #6b5a1a}
+.sv-low{background:#12351f;color:#6ee7a0;border:1px solid #1e5c33}
+.sv-info{background:#1a2733;color:#8fa3b8;border:1px solid #2a3646}
+.up{color:#ff7070}.down{color:#6ee7a0}.same{color:var(--fg3)}
+.kpi{display:flex;gap:14px;flex-wrap:wrap}
+.kpi .k{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:104px}
+.kpi .k b{display:block;font-size:22px;font-family:var(--mono);line-height:1.2}
+.kpi .k span{font-size:11.5px;color:var(--fg2)}
+.kpi .k.ok b{color:var(--ok)}.kpi .k.warn b{color:var(--warn)}.kpi .k.err b{color:var(--err)}
+.kpi .k.pur b{color:#a48ef0}
+.mapping-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:8px}
+.mapping-grid label{font-size:11.5px;color:var(--fg2);display:block;margin-bottom:2px}
+.mapping-grid select{padding:5px 7px;font-size:12px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:5px;background:var(--bg3);
+  border-radius:3px;outline:none;padding:0;border:none;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--acc);cursor:pointer;border:2px solid var(--bg2)}
+.wrow{display:grid;grid-template-columns:96px 1fr 56px;gap:10px;align-items:center;margin-bottom:9px}
+.wrow span{font-size:12.5px;color:var(--fg2)}
+.wrow b{font-family:var(--mono);font-size:12.5px;text-align:right;color:var(--acc)}
+table.rank{width:100%;border-collapse:collapse;font-size:12px}
+table.rank th,table.rank td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.rank th{background:var(--bg3);color:var(--fg2);position:sticky;top:0;font-weight:600}
+table.rank td.num{font-family:var(--mono);text-align:right}
+table.rank tr:nth-child(even){background:#131a23}
+table.rank .explain{font-size:11px;color:var(--fg2);line-height:1.5}
+.bar{height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:4px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--acc2),var(--acc))}
+.tiny{font-size:11px;color:var(--fg3)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>漏扫报告 <span>AI 分析工具</span></h1>
+  <div class="sub">脱敏 → AI 研判 → 还原出报告 ｜ 全程本地处理，原始数据不出本机</div>
+  <div class="steps">
+    <button data-step="1" class="on"><span class="n">1</span>导入报告</button>
+    <button data-step="2"><span class="n">2</span>脱敏</button>
+    <button data-step="3"><span class="n">3</span>AI 分析</button>
+    <button data-step="4"><span class="n">4</span>还原与出报告</button>
+    <button data-step="5"><span class="n">5</span>修复验证 Diff</button>
+    <button data-step="6"><span class="n">6</span>优先级重算</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ 步骤 1 ============ -->
+<section id="p1" class="on">
+  <div class="card">
+    <h2>导入漏扫报告 <small>支持厂商 HTML 报告 / CSV / TXT</small></h2>
+    <div class="drop" id="drop">
+      <b>点击选择文件</b> 或把报告拖到这里<br>
+      <span class="mini">.html .htm .csv .txt .log .json ｜ HTML 会按表格和正文自动提取</span>
+      <input type="file" id="file" accept=".html,.htm,.csv,.txt,.log,.json" style="display:none">
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost sm" id="btnDemo">载入示例报告（先熟悉流程）</button>
+      <span class="mini" id="fileInfo"></span>
+    </div>
+  </div>
+
+  <div class="card" id="cardPreview" style="display:none">
+    <h2>提取结果 <small>确认内容没问题再进下一步</small></h2>
+    <div class="stat" id="statBox"></div>
+    <div class="row" style="margin:12px 0">
+      <span class="chk"><input type="checkbox" id="optTableOnly"> 只用表格内容（去掉大段说明文字）</span>
+      <span class="chk"><input type="checkbox" id="optCompact"> 压缩长描述（每行只留关键列，省 token）</span>
+    </div>
+    <pre id="previewText"></pre>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="btnToMask">下一步：脱敏 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 步骤 2 ============ -->
+<section id="p2">
+  <div class="card">
+    <h2>脱敏 <small>把 IP / 域名 / 邮箱替换成占位符，原始值只留在本机</small></h2>
+    <div class="row" style="margin-bottom:12px">
+      <span class="chk"><input type="checkbox" id="mIp" checked> IP 地址</span>
+      <span class="chk"><input type="checkbox" id="mDom" checked> 域名 / 主机名</span>
+      <span class="chk"><input type="checkbox" id="mMail" checked> 邮箱</span>
+      <span class="chk"><input type="checkbox" id="mMac"> MAC 地址</span>
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <label class="mini" style="margin-right:6px">额外要脱敏的字符串（逗号分隔，如公司名）：</label>
+      <input type="text" id="extraWords" placeholder="例如：XX银行,XX集团,内网OA" style="flex:1;min-width:260px">
+    </div>
+    <div class="row">
+      <button class="btn" id="btnMask">执行脱敏</button>
+      <button class="btn ghost sm" id="btnSaveMap" disabled>导出映射表(mapping.json)</button>
+      <span class="mini" id="maskInfo"></span>
+    </div>
+    <div class="note warn" style="margin-top:14px">
+      <b>mapping.json 里是真实 IP/域名</b>，只用于最后还原。它<b>绝不能</b>发给 AI，也不要随手丢在共享目录。
+    </div>
+  </div>
+
+  <div class="card" id="cardMasked" style="display:none">
+    <h2>脱敏结果 <small>这就是要发给 AI 的内容</small></h2>
+    <div class="stat" id="maskStat"></div>
+    <div style="margin:12px 0">
+      <div class="mini" style="margin-bottom:6px">识别出的敏感项：</div>
+      <div id="entityList" style="max-height:180px;overflow:auto"></div>
+    </div>
+    <pre id="maskedText" style="max-height:400px"></pre>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="btnToAI">下一步：送 AI 分析 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 步骤 3 ============ -->
+<section id="p3">
+  <div class="card">
+    <h2>AI 分析 <small>方式 A：复制粘贴到任意 AI 网页（最稳）｜ 方式 B：页面内直连 API</small></h2>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="btnCopy">复制「提示词 + 脱敏数据」到剪贴板</button>
+      <button class="btn ghost sm" id="btnDownloadPayload">下载 payload.md</button>
+      <span class="mini" id="payloadInfo"></span>
+    </div>
+    <div class="note">
+      复制后贴到 DeepSeek / Kimi / 通义 / ChatGPT 等任意对话里即可。拿回结果后到<b>第 4 步</b>粘贴还原。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>方式 B：直连 API <small>浏览器直接请求，Key 只存在本机</small></h2>
+    <div class="grid g3" style="margin-bottom:10px">
+      <div>
+        <label class="mini">Base URL</label>
+        <input type="text" id="apiBase" value="https://api.deepseek.com/v1">
+      </div>
+      <div>
+        <label class="mini">模型</label>
+        <input type="text" id="apiModel" value="deepseek-flash">
+      </div>
+      <div>
+        <label class="mini">API Key（可选，记在本机浏览器）</label>
+        <input type="password" id="apiKey" placeholder="sk-...">
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnRunApi">开始分析</button>
+      <span class="chk"><input type="checkbox" id="rememberKey" checked> 记住 Key</span>
+      <span class="mini" id="apiInfo"></span>
+    </div>
+    <div id="apiOut" style="display:none;margin-top:14px">
+      <div class="row" style="margin-bottom:6px">
+        <span class="badge b-ok" id="apiStatus">运行中</span>
+        <button class="btn ghost sm" id="btnCopyApiOut">复制结果</button>
+        <button class="btn ghost sm" id="btnApiToRestore">直接带到第 4 步 →</button>
+      </div>
+      <pre id="apiText" style="max-height:420px"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 步骤 4 ============ -->
+<section id="p4">
+  <div class="card">
+    <h2>还原并生成报告 <small>把 AI 的回复粘进来，占位符会换回真实 IP/域名</small></h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn ghost sm" id="btnLoadMap">导入 mapping.json</button>
+      <input type="file" id="mapFile" accept=".json" style="display:none">
+      <span class="chk"><input type="checkbox" id="autoRestore" checked> 输入时自动还原</span>
+      <span class="mini" id="mapInfo"></span>
+    </div>
+    <textarea id="aiAnswer" rows="10" placeholder="把 AI 分析结果整段粘贴到这里……"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnRestore">还原</button>
+      <span class="mini" id="restoreInfo"></span>
+    </div>
+  </div>
+
+  <div class="card" id="cardReport" style="display:none">
+    <h2>最终报告</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" id="btnSaveHtml">下载 HTML 报告</button>
+      <button class="btn ghost sm" id="btnSaveMd">下载 Markdown</button>
+      <button class="btn ghost sm" id="btnPrint">打印 / 存 PDF</button>
+    </div>
+    <div id="mdOut"></div>
+  </div>
+</section>
+<!-- ============ 步骤 5 ============ -->
+<section id="p5">
+  <div class="card">
+    <h2>跨次扫描 Diff / 修复验证 <small>基线扫描 vs 复测扫描，自动分出「已修复 / 仍存在 / 新增」</small></h2>
+    <div class="split">
+      <div>
+        <div class="mini" style="margin-bottom:6px">① 基线扫描（上一轮）</div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn ghost sm" id="btnBaseFile">选择文件</button>
+          <input type="file" id="baseFile" accept=".csv,.txt,.tsv,.log" style="display:none">
+          <span class="mini" id="baseInfo">未导入</span>
+        </div>
+        <textarea id="baseText" rows="7" placeholder="或直接粘贴 CSV / TSV（第一行为表头）"></textarea>
+      </div>
+      <div>
+        <div class="mini" style="margin-bottom:6px">② 复测扫描（本轮）</div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn ghost sm" id="btnRetFile">选择文件</button>
+          <input type="file" id="retFile" accept=".csv,.txt,.tsv,.log" style="display:none">
+          <span class="mini" id="retInfo">未导入</span>
+        </div>
+        <textarea id="retText" rows="7" placeholder="或直接粘贴 CSV / TSV（第一行为表头）"></textarea>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnDiff">开始比对</button>
+      <button class="btn ghost sm" id="btnDiffDemo">载入示例（两次扫描）</button>
+      <label class="mini">匹配模式
+        <select id="diffMode" style="width:auto;display:inline-block;margin-left:6px;padding:5px 8px">
+          <option value="strict" selected>严格：资产+漏洞+端口+路径（推荐，准确）</option>
+          <option value="medium">中等：资产+漏洞+端口</option>
+          <option value="loose">宽松：仅资产+漏洞（快，不保证准确）</option>
+        </select>
+      </label>
+      <span class="chk"><input type="checkbox" id="diffIgnoreQuery"> 忽略 URL 查询串</span>
+    </div>
+    <div class="note warn" id="diffModeNote" style="display:none">
+      宽松模式只按「资产 + 漏洞」匹配，速度快但可能把不同端口/路径的条目误判成同一条，
+      因此这类匹配会单独放进「疑似（需人工）」栏，不会直接算成已修复或仍存在。
+    </div>
+  </div>
+
+  <div class="card" id="cardMap" style="display:none">
+    <h2>字段映射 <small>自动识别错了就在这里手动改</small></h2>
+    <div class="mini" style="margin-bottom:4px">基线扫描</div>
+    <div class="mapping-grid" id="mapBaseGrid"></div>
+    <div class="mini" style="margin:12px 0 4px">复测扫描</div>
+    <div class="mapping-grid" id="mapRetGrid"></div>
+  </div>
+
+  <div class="card" id="cardDiff" style="display:none">
+    <h2>比对结果</h2>
+    <div class="kpi" id="diffKpi"></div>
+    <div class="row" style="margin:14px 0">
+      <select id="diffFilter" style="width:auto;padding:5px 8px">
+        <option value="all" selected>显示全部</option>
+        <option value="newhigh">只看新增高危</option>
+        <option value="high">只看高危及以上</option>
+      </select>
+      <span class="chk"><input type="checkbox" id="aggByAsset"> 按资产聚合</span>
+      <input type="text" id="diffSearch" placeholder="搜索 资产 / 漏洞名 / CVE" style="max-width:280px">
+      <button class="btn ghost sm" id="btnDiffCsv">导出 CSV</button>
+      <button class="btn ghost sm" id="btnDiffMaskCopy">复制结果（自动脱敏）</button>
+      <span class="mini" id="diffCopyInfo"></span>
+    </div>
+    <div id="diffViews">
+      <div class="col3" id="diffCols"></div>
+    </div>
+    <div id="aggView" style="display:none"></div>
+  </div>
+</section>
+
+<!-- ============ 步骤 6 ============ -->
+<section id="p6">
+  <div class="card">
+    <h2>可解释优先级重算 <small>KEV / EPSS / CVSS / 暴露面 加权，每一分都能拆开看</small></h2>
+    <div class="split">
+      <div>
+        <div class="mini" style="margin-bottom:6px">漏洞表（CSV / TSV，需含资产列 + 漏洞名或 CVE 列）</div>
+        <textarea id="prioText" rows="8" placeholder="粘贴归一后的漏洞表；也可以每行只写一个 CVE 编号"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost sm" id="prioFileBtn">选择文件</button>
+          <input type="file" id="prioFile" accept=".csv,.txt,.tsv" style="display:none">
+          <button class="btn ghost sm" id="prioFromDiff">从 Diff 结果带入</button>
+          <span class="mini" id="prioInfo"></span>
+        </div>
+      </div>
+      <div>
+        <div class="mini" style="margin-bottom:6px">情报数据</div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn sm" id="btnFetchIntel">联网补全 EPSS + KEV</button>
+          <span class="mini" id="intelStatus">未加载</span>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn ghost sm" id="kevFileBtn">导入 KEV JSON</button>
+          <input type="file" id="kevFile" accept=".json" style="display:none">
+          <span class="tiny">离线时用这个（CISA 官方文件）</span>
+        </div>
+        <div class="mini" style="margin-top:6px">手工 EPSS（每行 CVE,值）</div>
+        <textarea id="epssManual" rows="3" placeholder="CVE-2021-44228,0.97"></textarea>
+        <div class="mini" style="margin-top:6px">手工 KEV（每行一个 CVE，或逗号分隔）</div>
+        <textarea id="kevManual" rows="3" placeholder="CVE-2021-44228"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>权重 <small>拖动实时重排</small></h2>
+    <div class="split">
+      <div>
+        <div class="wrow"><span>KEV 在野利用</span><input type="range" id="wKev" min="0" max="100" value="40"><b id="vKev">40</b></div>
+        <div class="wrow"><span>EPSS 概率</span><input type="range" id="wEpss" min="0" max="100" value="35"><b id="vEpss">35</b></div>
+        <div class="wrow"><span>CVSS 严重度</span><input type="range" id="wCvss" min="0" max="100" value="15"><b id="vCvss">15</b></div>
+        <div class="wrow"><span>公网暴露</span><input type="range" id="wExp" min="0" max="100" value="10"><b id="vExp">10</b></div>
+      </div>
+      <div>
+        <div class="note" style="margin-top:0">
+          按权重归一化后求和，四项加起来不必等于 100。<br>
+          参考基线：KEV 40 / EPSS 35 / CVSS 15 / 暴露 10（VulnPilot 口径）。
+        </div>
+        <div class="row">
+          <button class="btn ghost sm" id="btnResetW">恢复默认权重</button>
+          <span class="chk"><input type="checkbox" id="authDiscount"> 需认证项打 7 折</span>
+        </div>
+        <div class="mini" id="warnNoKev" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="cardRank" style="display:none">
+    <h2>重算结果 <small>综合分 + 可解释拆解</small></h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn ghost sm" id="btnRankCsv">导出 CSV</button>
+      <button class="btn ghost sm" id="btnRankMaskCopy">复制（自动脱敏）</button>
+      <span class="mini" id="rankInfo"></span>
+    </div>
+    <div style="max-height:560px;overflow:auto">
+      <table class="rank" id="rankTable"></table>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== CORE BEGIN ===================== */
+/* 纯函数区：不依赖 DOM，可单独做单元测试 */
+
+/* 常见顶级域，用来判断"是不是域名"，避免把 index.php / v1.2.3 当成域名 */
+var TLD_LIST = ('com cn net org edu gov mil io co info biz me tv cc xyz top site online shop app dev '
++ 'cloud ai tech vip club live pro work link store art design fun space host press news blog wiki '
++ 'uk us jp kr de fr ru hk tw sg au ca in br nl se no fi dk pl it es ch at be ie nz za mx ar tr '
++ 'ir il sa ae th vn my id ph pk bd lk np local corp lan internal intranet localdomain test example '
++ 'invalid company group').split(' ');
+
+var TLD_SET = {};
+for (var _i = 0; _i < TLD_LIST.length; _i++) TLD_SET[TLD_LIST[_i]] = 1;
+
+function isIPv4(s) {
+  var p = s.split('.');
+  if (p.length !== 4) return false;
+  for (var i = 0; i < 4; i++) {
+    if (!/^\d{1,3}$/.test(p[i])) return false;
+    var n = parseInt(p[i], 10);
+    if (n > 255) return false;
+    if (p[i].length > 1 && p[i][0] === '0') return false;
+  }
+  return true;
+}
+
+function isDomainLike(s) {
+  if (!s || s.length > 253) return false;
+  var parts = s.split('.');
+  if (parts.length < 2) return false;
+  for (var i = 0; i < parts.length; i++) {
+    if (!/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(parts[i])) return false;
+  }
+  var tld = parts[parts.length - 1].toLowerCase();
+  return !!TLD_SET[tld];
+}
+
+/* 组合正则：URL / 邮箱 / IPv4 / IPv6 / 域名 */
+var RE_SCAN = new RegExp(
+  '(?:https?|ftp):\\/\\/[^\\s"\'<>，。；、（）\\)\\]\\}]+' +      // URL
+  '|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,24}' +        // 邮箱
+  '|\\b(?:\\d{1,3}\\.){3}\\d{1,3}(?:\\/\\d{1,2})?(?::\\d{1,5})?\\b' + // IPv4(可带 /掩码 :端口)
+  '|\\b(?:[A-Fa-f0-9]{1,4}:){2,7}[A-Fa-f0-9]{1,4}\\b' +          // IPv6 完整形式
+  '|\\b(?:[A-Fa-f0-9]{1,4}(?::[A-Fa-f0-9]{1,4})*)?::(?:[A-Fa-f0-9]{1,4}(?::[A-Fa-f0-9]{1,4})*)?\\b' + // IPv6 压缩形式 fe80::1
+  '|::[A-Fa-f0-9]{1,4}\\b' +                                     // IPv6 以 :: 开头（如 ::1）
+  '|\\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,24}\\b', // 域名
+  'g'
+);
+
+/* 识别文本里的敏感项，返回去重后的列表（带分类） */
+function detectEntities(text, opts) {
+  opts = opts || {};
+  var wantIp = opts.ip !== false, wantDom = opts.dom !== false,
+      wantMail = opts.mail !== false, wantMac = !!opts.mac;
+  var found = {};   // key -> {kind, value, seq}
+  var seq = 0;
+  var m;
+
+  /* 按首次出现顺序编号：先加先得，重复值不覆盖 */
+  function add(key, kind, value) {
+    if (!found[key]) found[key] = { kind: kind, value: value, seq: seq++ };
+  }
+
+  RE_SCAN.lastIndex = 0;
+  while ((m = RE_SCAN.exec(text)) !== null) {
+    var tok = m[0];
+    if (tok.length > 400) continue;
+
+    /* URL：只脱主机部分，保留路径（路径本身对研判有价值） */
+    if (/^(https?|ftp):\/\//i.test(tok)) {
+      if (!wantIp && !wantDom) continue;
+      var host = '';
+      try {
+        var u = new URL(tok);
+        host = u.hostname;
+      } catch (e) {
+        var mm = tok.match(/^(?:https?|ftp):\/\/([^\/:]+)/i);
+        host = mm ? mm[1] : '';
+      }
+      if (!host) continue;
+      if (isIPv4(host)) { if (wantIp) add('ip:' + host, 'IP', host); }
+      else if (isDomainLike(host)) { if (wantDom) add('dom:' + host, 'DOM', host); }
+      continue;
+    }
+
+    /* 邮箱 */
+    if (tok.indexOf('@') > 0) {
+      if (wantMail) add('mail:' + tok.toLowerCase(), 'MAIL', tok);
+      continue;
+    }
+
+    /* IPv4（可能带 /24 或 :端口） */
+    var ipPart = tok, suffix = '';
+    var ms = tok.match(/^((?:\d{1,3}\.){3}\d{1,3})((?:\/\d{1,2})?(?::\d{1,5})?)$/);
+    if (ms) { ipPart = ms[1]; suffix = ms[2]; }
+    if (isIPv4(ipPart)) {
+      if (wantIp) add('ip:' + ipPart, 'IP', ipPart);
+      continue;
+    }
+
+    /* IPv6（完整形式与 fe80::1 这类压缩形式） */
+    if (tok.indexOf(':') >= 0 && tok.indexOf('.') < 0 && /^[A-Fa-f0-9:]+$/.test(tok)) {
+      if (tok === '::' || tok.length < 3 || !/::/.test(tok) && (tok.match(/:/g) || []).length < 2) continue;
+      if (wantIp) add('ip:' + tok, 'IP', tok);
+      continue;
+    }
+
+    /* 域名 */
+    if (isDomainLike(tok)) {
+      if (wantDom) add('dom:' + tok.toLowerCase(), 'DOM', tok);
+    }
+  }
+  return found;
+}
+
+/* 生成 值 -> 占位符 的映射 */
+function buildMapping(found, extraWords) {
+  var byKind = { IP: [], DOM: [], MAIL: [], MAC: [], CUS: [] };
+  for (var k in found) {
+    if (!found.hasOwnProperty(k)) continue;
+    var it = found[k];
+    if (!byKind[it.kind]) byKind[it.kind] = [];
+    byKind[it.kind].push(it);
+  }
+  /* 按首次出现顺序编号，报告里读起来更自然；替换时长值优先由 maskText 负责 */
+  for (var kk in byKind) {
+    if (byKind.hasOwnProperty(kk)) {
+      byKind[kk].sort(function (a, b) { return (a.seq || 0) - (b.seq || 0); });
+    }
+  }
+  var forward = {};   // 真实值 -> 占位符
+  var reverse = {};   // 占位符 -> 真实值
+  var order = [];
+  ['IP', 'DOM', 'MAIL', 'MAC', 'CUS'].forEach(function (kind) {
+    var arr = byKind[kind] || [];
+    for (var i = 0; i < arr.length; i++) {
+      var val = arr[i].value;
+      if (forward[val]) continue;
+      var n = String(i + 1);
+      while (n.length < 3) n = '0' + n;
+      var token = '[[' + kind + '_' + n + ']]';
+      forward[val] = token;
+      reverse[token] = val;
+      order.push({ kind: kind, token: token, value: val });
+    }
+  });
+  /* 额外的自定义词（公司名等）：按长度降序，先长后短避免嵌套截断 */
+  var extras = (extraWords || []).filter(function (w) { return w && w.trim(); })
+    .map(function (w) { return w.trim(); })
+    .sort(function (a, b) { return b.length - a.length; });
+  extras.forEach(function (w, i) {
+    if (forward[w]) return;
+    var n = String(i + 1); while (n.length < 3) n = '0' + n;
+    var token = '[[CUS_' + n + ']]';
+    forward[w] = token; reverse[token] = w;
+    order.push({ kind: 'CUS', token: token, value: w });
+  });
+  return { forward: forward, reverse: reverse, list: order };
+}
+
+function escapeRe(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+/* 执行脱敏：长值优先替换，避免 www.a.com 被 a.com 先吃掉 */
+function maskText(text, mapping) {
+  var keys = Object.keys(mapping.forward).sort(function (a, b) { return b.length - a.length; });
+  for (var i = 0; i < keys.length; i++) {
+    var val = keys[i];
+    if (val.length < 3) continue;
+    var re = new RegExp(escapeRe(val), 'g');
+    text = text.replace(re, mapping.forward[val]);
+  }
+  return text;
+}
+
+/* 还原：宽松匹配，容忍 AI 把 [[IP_001]] 写成 [[ ip_1 ]]、IP-001 等变体 */
+function restoreText(text, reverse) {
+  var tokens = Object.keys(reverse).sort(function (a, b) { return b.length - a.length; });
+  for (var i = 0; i < tokens.length; i++) {
+    var tok = tokens[i];
+    var val = reverse[tok];
+    if (text.indexOf(tok) >= 0) text = text.split(tok).join(val);
+    var mm = tok.match(/^\[\[([A-Z]+)_(\d+)\]\]$/);
+    if (mm) {
+      var kind = mm[1], num = String(parseInt(mm[2], 10));
+      var re1 = new RegExp('\\[\\[\\s*' + kind + '\\s*[_-]\\s*0*' + num + '\\s*\\]\\]', 'gi');
+      text = text.replace(re1, val);
+      var re2 = new RegExp('\\b' + kind + '[_-]0*' + num + '\\b', 'gi');
+      text = text.replace(re2, val);
+    }
+  }
+  return text;
+}
+
+/* 检查还有没有漏网的占位符 */
+function findLeftoverTokens(text) {
+  var m = text.match(/\[\[\s*[A-Z]+\s*[_-]\s*\d+\s*\]\]/g);
+  return m ? m : [];
+}
+
+/* 提示词 */
+function buildPrompt(sanitizedText, meta) {
+  meta = meta || {};
+  var head = '你是资深渗透测试与安全运营专家，熟悉漏扫报告的研判、误报识别与加固落地。\n\n'
+    + '【关于本数据】\n'
+    + '1. 这是已脱敏的漏扫报告。IP 被替换为 [[IP_001]] 形式，域名被替换为 [[DOM_001]]，邮箱为 [[MAIL_001]]。\n'
+    + '2. 这些占位符是唯一标识，**必须原样保留**（包括方括号、下划线、大小写、位数），不要改写、不要翻译、不要推测真实地址。\n'
+    + '3. 不要编造 CVE 编号、EXP 链接或厂商公告；不确定就标注"需核实"。\n'
+    + '4. 你的所有结论都是概率性的辅助判断，涉及高危/删除/变更的操作必须由人工复核后再执行。\n\n'
+    + '【任务一：报告初筛与研判】\n'
+    + 'A. 去重与归并：同一漏洞在多个端口/路径重复出现、同一 CVE 泛滥于多个资产，请按"漏洞类型 / CVE / 影响资产"聚类，输出归并后的唯一漏洞清单，并说明每条由多少条原始记录合并而来。\n'
+    + 'B. 误报初筛：结合漏洞名称、影响版本、端口与路径特征、是否存在回显/证据字段，给出"疑似误报 / 需确认 / 基本可信"的判断，并给出置信度（高/中/低）和判断依据。明确指出哪些需要人工复测才能定论。\n'
+    + 'C. 可利用性研判：是否存在公开可利用代码（EXP/POC）、是否需要认证或特定前置条件、是否公网暴露、利用后果（RCE/信息泄露/权限提升等）。\n'
+    + 'D. 优先级排序：给出 Top 10，并单独列出"今日必修清单"，每条写明建议处置时限（24 小时 / 7 天 / 常规迭代）和理由。排序需综合考虑 CVSS、公开利用、暴露面、业务影响与利用前置条件。\n\n'
+    + '【任务二：加固闭环】\n'
+    + 'E. 可落地修复动作：对配置类、基线类、可脚本化的问题，给出可执行草稿——Ansible playbook、Bash 加固脚本或 Terraform 片段（标注类型与作用对象）。代码必须带注释，并在开头显式标注"需 Dry-run + 人工审核后执行"。涉及 SSH、防火墙、认证策略、内核参数的变更要额外警示风险与回滚方式。\n'
+    + 'F. 基线核查辅助：若报告包含 CIS Benchmark 或等保基线项，请解析检查规则、给出批量检测脚本草稿，并对每个不合规项逐条解释"为什么不合规 / 怎么改 / 改完怎么验证"。若信息不足以判断，请明确说明缺什么，不要猜。\n\n'
+    + '【输出格式】\n'
+    + '先输出 Markdown 正文，章节固定为：\n'
+    + '## 0. 结论摘要\n## 1. 去重与归并\n## 2. 误报初筛\n## 3. 可利用性研判\n## 4. 优先级与今日必修清单\n## 5. 加固闭环（Ansible/Bash/Terraform 草稿）\n## 6. 基线核查辅助\n## 7. 验证与回归建议\n## 8. 局限说明与人工复核清单\n\n'
+    + '正文之后，追加一个 ```json 代码块，严格按下面结构输出（供后续程序解析，字段缺失填 null，不要省略键）：\n'
+    + '```json\n'
+    + '{\n'
+    + '  "summary": {"raw_count": 0, "merged_count": 0, "suspected_fp": 0, "confirmed": 0},\n'
+    + '  "findings": [\n'
+    + '    {"id": "F-01", "title": "", "severity": "高|中|低", "cvss": "", "cve": "",\n'
+    + '     "affected": ["[[IP_001]]"], "merged_from": 1, "confidence": "高|中|低",\n'
+    + '     "verdict": "疑似误报|需确认|基本可信", "exploit_public": true,\n'
+    + '     "public_exposure": true, "impact": "", "evidence": "", "action": ""}\n'
+    + '  ],\n'
+    + '  "today_list": [{"rank": 1, "finding_id": "F-01", "why": "", "deadline": "24h|7d|迭代"}],\n'
+    + '  "hardening": [{"kind": "ansible|bash|terraform", "target": "[[IP_001]]", "risk": "高|中|低", "snippet": "..."}],\n'
+    + '  "manual_review": [""]\n'
+    + '}\n'
+    + '```\n\n'
+    + '【报告数据】\n';
+
+  var tail = '\n\n（数据结束。请按上述要求输出。）';
+  var preview = sanitizedText;
+  var MAX = 120000;
+  if (preview.length > MAX) {
+    preview = preview.slice(0, MAX) + '\n\n…（内容过长，已截断，共 ' + sanitizedText.length + ' 字符）';
+  }
+  return head + preview + tail;
+}
+
+/* 极简 Markdown 渲染（够用即可，不引第三方库） */
+function mdToHtml(src) {
+  if (!src) return '';
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  var lines = src.replace(/\r\n/g, '\n').split('\n');
+  var out = [], i = 0, inCode = false, codeBuf = [], listType = null;
+
+  function closeList() { if (listType) { out.push('</' + listType + '>'); listType = null; } }
+
+  while (i < lines.length) {
+    var line = lines[i];
+
+    if (/^```/.test(line)) {
+      if (!inCode) { closeList(); inCode = true; codeBuf = []; }
+      else {
+        inCode = false;
+        out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+      }
+      i++; continue;
+    }
+    if (inCode) { codeBuf.push(line); i++; continue; }
+
+    if (/^\s*$/.test(line)) { closeList(); i++; continue; }
+
+    var h = line.match(/^(#{1,4})\s+(.*)$/);
+    if (h) {
+      closeList();
+      var lv = h[1].length;
+      out.push('<h' + lv + '>' + inline(h[2]) + '</h' + lv + '>');
+      i++; continue;
+    }
+
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { closeList(); out.push('<hr>'); i++; continue; }
+
+    /* 表格 */
+    if (/\|/.test(line) && i + 1 < lines.length && /^\s*\|?[\s:-]*-[\s:|-]*\|?\s*$/.test(lines[i + 1]) && /-/.test(lines[i + 1])) {
+      closeList();
+      var head = splitRow(line);
+      i += 2;
+      var body = [];
+      while (i < lines.length && /\|/.test(lines[i]) && !/^\s*$/.test(lines[i])) { body.push(splitRow(lines[i])); i++; }
+      var t = '<table><thead><tr>' + head.map(function (c) { return '<th>' + inline(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      body.forEach(function (r) {
+        t += '<tr>' + r.map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
+      });
+      out.push(t + '</tbody></table>');
+      continue;
+    }
+
+    var ul = line.match(/^\s*[-*+]\s+(.*)$/);
+    if (ul) {
+      if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; }
+      out.push('<li>' + inline(ul[1]) + '</li>'); i++; continue;
+    }
+    var ol = line.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (ol) {
+      if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; }
+      out.push('<li>' + inline(ol[1]) + '</li>'); i++; continue;
+    }
+    if (/^>\s?/.test(line)) {
+      closeList();
+      out.push('<blockquote>' + inline(line.replace(/^>\s?/, '')) + '</blockquote>'); i++; continue;
+    }
+
+    closeList();
+    var para = [line];
+    i++;
+    while (i < lines.length && !/^\s*$/.test(lines[i]) && !/^(#{1,4}\s|```|>|\s*[-*+]\s|\s*\d+[.)]\s)/.test(lines[i]) && !/\|/.test(lines[i])) {
+      para.push(lines[i]); i++;
+    }
+    out.push('<p>' + inline(para.join(' ')) + '</p>');
+  }
+  if (inCode && codeBuf.length) out.push('<pre><code>' + esc(codeBuf.join('\n')) + '</code></pre>');
+  closeList();
+  return out.join('\n');
+
+  function splitRow(l) {
+    var s = l.trim();
+    if (s.charAt(0) === '|') s = s.slice(1);
+    if (s.charAt(s.length - 1) === '|') s = s.slice(0, -1);
+    return s.split('|').map(function (x) { return x.trim(); });
+  }
+  function inline(s) {
+    var t = esc(s);
+    t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
+    t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    t = t.replace(/\[([^\]]+)\]\((https?:[^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    return t;
+  }
+}
+
+/* ===================================================================
+   跨次扫描 Diff 引擎 + 可解释优先级重算（纯函数，可单独测试）
+   =================================================================== */
+
+/* ---------- CSV / TSV 解析 ---------- */
+function detectDelimiter(text) {
+  var firstLine = (text.replace(/^\uFEFF/, '').split(/\r?\n/)[0] || '');
+  var cands = [',', '\t', ';', '|'];
+  var best = ',', bestN = 0;
+  for (var i = 0; i < cands.length; i++) {
+    var n = firstLine.split(cands[i]).length;
+    if (n > bestN) { bestN = n; best = cands[i]; }
+  }
+  return best;
+}
+
+function parseDSV(text, delim) {
+  var src = String(text || '').replace(/^\uFEFF/, '');
+  var d = delim || detectDelimiter(src);
+  var rows = [], row = [], field = '', inQ = false, i = 0;
+  while (i < src.length) {
+    var c = src.charAt(i);
+    if (inQ) {
+      if (c === '"') {
+        if (src.charAt(i + 1) === '"') { field += '"'; i += 2; continue; }
+        inQ = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQ = true; i++; continue; }
+    if (c === d) { row.push(field); field = ''; i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+    field += c; i++;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(function (r) {
+    for (var k = 0; k < r.length; k++) { if (String(r[k]).trim() !== '') return true; }
+    return false;
+  });
+}
+
+/* ---------- 字段映射 ---------- */
+var FIELD_LABELS = {
+  asset: '资产 / IP', vuln: '漏洞名称', cve: 'CVE 编号', port: '端口',
+  path: 'URL / 路径', sev: '风险等级', cvss: 'CVSS', epss: 'EPSS', kev: 'KEV'
+};
+var FIELD_HINTS = {
+  asset: ['资产ip', 'ip地址', '主机ip', '扫描目标', '受影响资产', '资产', '主机', '目标', 'ip', 'host', 'asset', 'target', 'address'],
+  vuln: ['漏洞名称', '漏洞标题', '风险名称', '检测项', '漏洞', '名称', 'vuln', 'vulnerability', 'title', 'name', 'risk'],
+  cve: ['cve编号', 'cve号', 'cveid', 'cve'],
+  port: ['端口号', '端口', 'port'],
+  path: ['url路径', '请求路径', '请求url', '路径', '链接', '位置', 'url', 'uri', 'path'],
+  sev: ['风险等级', '危险等级', '严重等级', '等级', '级别', '风险', 'severity', 'risklevel', 'risk', 'level', 'sev'],
+  cvss: ['cvss评分', 'cvss分值', 'cvssv3', 'cvss', '评分', 'score'],
+  epss: ['epss评分', 'epss'],
+  kev: ['在野利用', '已知利用', 'kev', 'exploited']
+};
+
+function normText(s) { return String(s == null ? '' : s).replace(/\u00a0/g, ' ').trim(); }
+
+function autoMapFields(headers) {
+  var map = {}, used = {};
+  var order = ['asset', 'vuln', 'cve', 'port', 'path', 'sev', 'cvss', 'epss', 'kev'];
+  for (var oi = 0; oi < order.length; oi++) {
+    var f = order[oi], hints = FIELD_HINTS[f] || [];
+    var bestIdx = -1, bestScore = 0;
+    for (var i = 0; i < headers.length; i++) {
+      if (used[i]) continue;
+      var h = normText(headers[i]).toLowerCase()
+        .replace(/\s/g, '').replace(/[()（）。:：\-_/]/g, '');
+      if (!h) continue;
+      for (var k = 0; k < hints.length; k++) {
+        var hint = hints[k].replace(/\s/g, '');
+        var sc = 0;
+        if (h === hint) sc = 200;
+        else if (h.indexOf(hint) === 0) sc = 100 - (h.length - hint.length);
+        else if (h.indexOf(hint) > 0) sc = 50 - (h.length - hint.length);
+        if (sc > bestScore) { bestScore = sc; bestIdx = i; }
+      }
+    }
+    if (bestScore > 0 && bestIdx >= 0) { map[f] = bestIdx; used[bestIdx] = 1; }
+  }
+  return map;
+}
+
+/* ---------- 归一化 ---------- */
+function normAsset(v) {
+  var s = normText(v).toLowerCase();
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\//, '');
+  s = s.replace(/\/.*$/, '');
+  s = s.replace(/:\d{1,5}$/, '');
+  s = s.replace(/\.$/, '');
+  return s;
+}
+function normPort(v) {
+  var m = normText(v).match(/\d{1,5}/);
+  if (!m) return '';
+  var n = parseInt(m[0], 10);
+  return (n > 0 && n < 65536) ? String(n) : '';
+}
+function normPath(v, ignoreQuery) {
+  var s = normText(v);
+  if (!s) return '';
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\/[^\/]*/i, '');
+  if (ignoreQuery) s = s.replace(/[?#].*$/, '');
+  s = s.replace(/\/{2,}/g, '/');
+  if (s.length > 1) s = s.replace(/\/+$/, '');
+  if (s.charAt(0) !== '/') s = '/' + s;
+  return s.toLowerCase();
+}
+function normSev(v) {
+  var s = normText(v).toLowerCase();
+  if (!s) return 'unknown';
+  if (/严重|紧急|致命|critical|crit|catastrophic/.test(s)) return 'critical';
+  if (/高危|高风险|high/.test(s)) return 'high';
+  if (/中危|中风险|medium|moderate|mid/.test(s)) return 'medium';
+  if (/低危|低风险|low/.test(s)) return 'low';
+  if (/信息|提示|无风险|info|note/.test(s)) return 'info';
+  return 'unknown';
+}
+var SEV_RANK = { critical: 4, high: 3, medium: 2, low: 1, info: 0, unknown: -1 };
+var SEV_LABEL = { critical: '严重', high: '高危', medium: '中危', low: '低危', info: '信息', unknown: '未知' };
+function sevLabel(s) { return SEV_LABEL[s] || s; }
+
+function hashKey(s) {
+  var h = 2166136261;
+  for (var i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+}
+
+/* ---------- 行 -> 漏洞对象 ---------- */
+function buildFinding(row, map) {
+  function g(f) { return (map && map[f] != null && map[f] >= 0) ? normText(row[map[f]]) : ''; }
+  var cve = g('cve').toUpperCase().replace(/\s/g, '');
+  if (cve && cve.indexOf('CVE-') !== 0 && /^\d{4}-\d{3,}$/.test(cve)) cve = 'CVE-' + cve;
+  if (cve && !/^CVE-\d{4}-\d{3,}$/.test(cve)) cve = '';
+  var cvssTxt = g('cvss').replace(/[^\d.]/g, '');
+  var cvss = cvssTxt ? parseFloat(cvssTxt) : null;
+  if (cvss != null && (isNaN(cvss) || cvss < 0 || cvss > 10)) cvss = null;
+  var epssTxt = g('epss').replace(/[^\d.]/g, '');
+  var epss = epssTxt ? parseFloat(epssTxt) : null;
+  if (epss != null && (isNaN(epss) || epss < 0 || epss > 1)) epss = null;
+  var kevTxt = g('kev').toLowerCase();
+  var kevFlag = /是|yes|true|1|在野|已知/.test(kevTxt) ? true : (/否|no|false|0/.test(kevTxt) ? false : null);
+  return {
+    raw: row,
+    asset: normAsset(g('asset')),
+    vuln: g('vuln'),
+    cve: cve,
+    port: normPort(g('port')),
+    pathRaw: g('path'),
+    path: normPath(g('path'), false),
+    sev: normSev(g('sev')),
+    cvss: cvss, epss: epss, kev: kevFlag
+  };
+}
+
+/* 匹配键：asset + vuln_id + port + path */
+function findingKey(f, mode, ignoreQuery) {
+  var vid = f.cve || (f.vuln || '').toLowerCase().replace(/\s+/g, '');
+  var p = ignoreQuery ? normPath(f.pathRaw, true) : f.path;
+  if (mode === 'loose') return f.asset + '|' + vid;
+  if (mode === 'medium') return f.asset + '|' + vid + '|' + f.port;
+  return f.asset + '|' + vid + '|' + f.port + '|' + p;
+}
+
+/* ---------- Diff ---------- */
+function computeDiff(baseRows, retRows, mapB, mapR, opts) {
+  opts = opts || {};
+  var mode = opts.mode || 'strict';
+  var ignoreQuery = !!opts.ignoreQuery;
+  var B = baseRows.map(function (r) { return buildFinding(r, mapB); });
+  var R = retRows.map(function (r) { return buildFinding(r, mapR); });
+
+  var rIdx = {};
+  for (var i = 0; i < R.length; i++) {
+    var k = findingKey(R[i], 'strict', ignoreQuery);
+    (rIdx[k] || (rIdx[k] = [])).push(i);
+  }
+
+  var usedR = {};
+  var remain = [], fixedCand = [];
+
+  for (var b = 0; b < B.length; b++) {
+    var fb = B[b];
+    var kk = findingKey(fb, 'strict', ignoreQuery);
+    var arr = rIdx[kk] || [];
+    var hitIdx = -1;
+    for (var j = 0; j < arr.length; j++) { if (!usedR[arr[j]]) { hitIdx = arr[j]; break; } }
+    if (hitIdx >= 0) {
+      usedR[hitIdx] = 1;
+      remain.push({ base: fb, cur: R[hitIdx], exact: true });
+    } else {
+      fixedCand.push(fb);
+    }
+  }
+
+  var probable = [];
+  if (mode !== 'strict') {
+    var leftover = [];
+    for (var q = 0; q < R.length; q++) { if (!usedR[q]) leftover.push(q); }
+    var stillFixed = [];
+    for (var x = 0; x < fixedCand.length; x++) {
+      var fbc = fixedCand[x];
+      var kb = findingKey(fbc, mode, ignoreQuery);
+      var pick = -1;
+      for (var y = 0; y < leftover.length; y++) {
+        var ri = leftover[y];
+        if (usedR[ri]) continue;
+        if (findingKey(R[ri], mode, ignoreQuery) === kb) { pick = ri; break; }
+      }
+      if (pick >= 0) {
+        usedR[pick] = 1;
+        probable.push({ base: fbc, cur: R[pick], exact: false });
+      } else {
+        stillFixed.push(fbc);
+      }
+    }
+    fixedCand = stillFixed;
+  }
+
+  var added = [];
+  for (var z = 0; z < R.length; z++) { if (!usedR[z]) added.push(R[z]); }
+
+  return {
+    remain: remain, fixed: fixedCand, added: added, probable: probable,
+    counts: {
+      base: B.length, ret: R.length,
+      fixed: fixedCand.length, remain: remain.length,
+      added: added.length, probable: probable.length
+    }
+  };
+}
+
+function sevDelta(baseSev, curSev) {
+  var d = (SEV_RANK[curSev] == null ? -1 : SEV_RANK[curSev]) -
+          (SEV_RANK[baseSev] == null ? -1 : SEV_RANK[baseSev]);
+  return d > 0 ? 'up' : (d < 0 ? 'down' : 'same');
+}
+
+function aggregateByAsset(diff) {
+  var m = {};
+  function get(a) {
+    var k = a || '(未知资产)';
+    if (!m[k]) m[k] = { asset: k, fixed: 0, remain: 0, added: 0, probable: 0, total: 0 };
+    return m[k];
+  }
+  diff.fixed.forEach(function (f) { var o = get(f.asset); o.fixed++; o.total++; });
+  diff.remain.forEach(function (p) { var o = get(p.base.asset); o.remain++; o.total++; });
+  diff.added.forEach(function (f) { var o = get(f.asset); o.added++; o.total++; });
+  diff.probable.forEach(function (p) { var o = get(p.base.asset); o.probable++; });
+  var list = [];
+  for (var k in m) { if (m.hasOwnProperty(k)) list.push(m[k]); }
+  list.forEach(function (o) {
+    o.cleared = (o.remain === 0 && o.added === 0 && o.probable === 0);
+  });
+  list.sort(function (a, b) {
+    return (b.remain + b.added) - (a.remain + a.added) || b.total - a.total;
+  });
+  return list;
+}
+
+/* ---------- 优先级重算 ---------- */
+var DEF_WEIGHTS = { kev: 40, epss: 35, cvss: 15, exp: 10 };
+
+function clamp01(v) { return v < 0 ? 0 : (v > 1 ? 1 : v); }
+
+function isPrivateIp(s) {
+  var a = String(s || '');
+  if (/^10\./.test(a)) return true;
+  if (/^192\.168\./.test(a)) return true;
+  if (/^172\.(1[6-9]|2\d|3[01])\./.test(a)) return true;
+  if (/^127\./.test(a)) return true;
+  if (/^169\.254\./.test(a)) return true;
+  if (a === 'localhost') return true;
+  return false;
+}
+
+/* 暴露面判定：域名 → 公网；公网 IP → 公网；私网 IP → 内网 */
+function exposureOf(f) {
+  var a = String(f.asset || '').toLowerCase();
+  if (!a) return false;
+  if (isPrivateIp(a)) return false;
+  return true;
+}
+
+function sevToCvss(sev) {
+  return { critical: 9.5, high: 8.0, medium: 5.5, low: 2.5, info: 0.0, unknown: 0.0 }[sev] || 0.0;
+}
+
+function scoreFindings(list, W, opts, intel) {
+  opts = opts || {};
+  intel = intel || { epss: {}, kev: {} };
+  W = W || DEF_WEIGHTS;
+  var wK = Math.max(0, W.kev || 0), wE = Math.max(0, W.epss || 0),
+      wC = Math.max(0, W.cvss || 0), wX = Math.max(0, W.exp || 0);
+  var sumW = wK + wE + wC + wX;
+  if (sumW <= 0) { wK = 40; wE = 35; wC = 15; wX = 10; sumW = 100; }
+
+  var out = list.map(function (f) {
+    var kevKnown = !!intel.kev[f.cve];
+    var epssRaw = (intel.epss[f.cve] != null) ? intel.epss[f.cve] : f.epss;
+    var epssHas = (epssRaw != null) && !isNaN(epssRaw);
+    var epssVal = epssHas ? clamp01(epssRaw) : 0;
+    var cvssVal = (f.cvss != null) ? f.cvss : sevToCvss(f.sev);
+    var cvssHas = (f.cvss != null);
+    var expHit = (f.exposureHint != null) ? !!f.exposureHint : exposureOf(f);
+
+    var cK = 100 * wK * (kevKnown ? 1 : 0) / sumW;
+    var cE = 100 * wE * epssVal / sumW;
+    var cC = 100 * wC * clamp01(cvssVal / 10) / sumW;
+    var cX = 100 * wX * (expHit ? 1 : 0) / sumW;
+    var score = cK + cE + cC + cX;
+    var discounted = false;
+    if (opts.authDiscount && f.authRequired) { score *= 0.7; discounted = true; }
+
+    var parts = [
+      'KEV=' + (kevKnown ? '是' : '否') + '，贡献 ' + cK.toFixed(1),
+      'EPSS=' + (epssHas ? Number(epssVal).toFixed(3) : '无数据') + '，贡献 ' + cE.toFixed(1),
+      'CVSS=' + (cvssHas ? Number(cvssVal).toFixed(1) : '推定' + Number(cvssVal).toFixed(1)) + '，贡献 ' + cC.toFixed(1),
+      (expHit ? '公网暴露' : '内网资产') + '，贡献 ' + cX.toFixed(1)
+    ];
+    if (discounted) parts.push('需认证，总分×0.7');
+
+    return {
+      f: f, score: score, parts: parts, kev: kevKnown, epss: epssHas ? epssVal : null,
+      cvss: cvssVal, cvssHas: cvssHas, exposure: expHit, weighted: { k: cK, e: cE, c: cC, x: cX }
+    };
+  });
+  out.sort(function (a, b) { return b.score - a.score; });
+  return out;
+}
+
+/* ---------- 情报数据解析 ---------- */
+function parseEpssText(text) {
+  var map = {};
+  var lines = String(text || '').split(/\r?\n/);
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/(CVE-\d{4}-\d{3,})\s*[,，\t ]\s*([0-9]*\.?[0-9]+)/i);
+    if (m) {
+      var v = parseFloat(m[2]);
+      if (!isNaN(v)) map[m[1].toUpperCase()] = v;
+    }
+  }
+  return map;
+}
+
+function parseKevText(text) {
+  var map = {};
+  var re = /CVE-\d{4}-\d{3,}/ig, m;
+  while ((m = re.exec(String(text || ''))) !== null) { map[m[0].toUpperCase()] = true; }
+  return map;
+}
+
+/* 支持 CISA KEV 官方结构 / 数组 / 纯文本 */
+function indexKevJson(obj) {
+  var map = {};
+  if (!obj) return map;
+  var arr = null;
+  if (Array.isArray(obj)) arr = obj;
+  else if (obj.vulnerabilities && Array.isArray(obj.vulnerabilities)) arr = obj.vulnerabilities;
+  if (arr) {
+    for (var i = 0; i < arr.length; i++) {
+      var it = arr[i];
+      var id = typeof it === 'string' ? it : (it.cveID || it.cve || it.id);
+      if (id && /^CVE-/i.test(String(id))) map[String(id).toUpperCase()] = true;
+    }
+    return map;
+  }
+  if (typeof obj === 'string') return parseKevText(obj);
+  return parseKevText(JSON.stringify(obj));
+}
+
+/* ===================== CORE END ===================== */
+
+/* ===================== UI 部分 ===================== */
+var state = {
+  rawText: '', tables: [], fileName: '', isTable: false,
+  mapping: null, masked: '', sanitizedForAI: '', report: ''
+};
+
+function $(id) { return document.getElementById(id); }
+function toast(msg, isErr) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (isErr ? ' err' : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function () { t.className = 'toast'; }, 2600);
+}
+function esc2(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+/* 步骤切换 */
+document.querySelectorAll('.steps button').forEach(function (b) {
+  b.addEventListener('click', function () { goStep(parseInt(b.dataset.step, 10)); });
+});
+function goStep(n) {
+  document.querySelectorAll('.steps button').forEach(function (b) {
+    b.classList.toggle('on', parseInt(b.dataset.step, 10) === n);
+  });
+  document.querySelectorAll('section').forEach(function (s) {
+    s.classList.toggle('on', s.id === 'p' + n);
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---------- 步骤1：导入 ---------- */
+$('drop').addEventListener('click', function () { $('file').click(); });
+$('drop').addEventListener('dragover', function (e) { e.preventDefault(); this.classList.add('dragover'); });
+$('drop').addEventListener('dragleave', function () { this.classList.remove('dragover'); });
+$('drop').addEventListener('drop', function (e) {
+  e.preventDefault(); this.classList.remove('dragover');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+$('file').addEventListener('change', function () { if (this.files.length) handleFile(this.files[0]); });
+
+function handleFile(f) {
+  state.fileName = f.name;
+  var reader = new FileReader();
+  reader.onload = function () {
+    var txt = reader.result;
+    if (/\.html?$/i.test(f.name)) {
+      parseHtmlReport(txt);
+    } else {
+      state.rawText = txt;
+      state.tables = []; state.isTable = false;
+      showPreview();
+    }
+  };
+  reader.readAsText(f, 'utf-8');
+}
+
+/* HTML 报告：抽出 table（含表头），同时保留正文 */
+function parseHtmlReport(html) {
+  var doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style,noscript').forEach(function (n) { n.remove(); });
+
+  var tables = [];
+  doc.querySelectorAll('table').forEach(function (tb) {
+    var rows = [];
+    tb.querySelectorAll('tr').forEach(function (tr) {
+      var cells = [];
+      tr.querySelectorAll('th,td').forEach(function (td) {
+        cells.push((td.textContent || '').replace(/\s+/g, ' ').trim());
+      });
+      if (cells.length && cells.join('').trim()) rows.push(cells);
+    });
+    if (rows.length >= 2) tables.push(rows);
+  });
+
+  /* 保留较大的表（漏洞明细表通常列多行多），过滤导航/统计小表 */
+  tables = tables.filter(function (t) {
+    var cols = Math.max.apply(null, t.map(function (r) { return r.length; }));
+    return t.length >= 2 && cols >= 3;
+  });
+
+  state.tables = tables;
+  state.isTable = tables.length > 0;
+
+  var body = doc.body ? (doc.body.textContent || '') : '';
+  body = body.replace(/[ \t\u00a0]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  state.rawText = body;
+
+  showPreview();
+}
+
+function tableToText(tables) {
+  var out = [];
+  tables.forEach(function (t, ti) {
+    out.push('### 表格 ' + (ti + 1) + '（' + t.length + ' 行）');
+    t.forEach(function (r) { out.push(r.join(' | ')); });
+    out.push('');
+  });
+  return out.join('\n');
+}
+
+function getTextForMask() {
+  var useTable = $('optTableOnly').checked;
+  var compact = $('optCompact').checked;
+  var base;
+  if (state.isTable && (useTable || state.rawText.length < 50)) {
+    base = tableToText(state.tables);
+  } else if (state.isTable && !useTable) {
+    base = state.rawText + '\n\n===== 明细表 =====\n' + tableToText(state.tables);
+  } else {
+    base = state.rawText;
+  }
+  if (compact) {
+    /* 压缩：每行只保留前 12 列，且单元格截到 120 字 */
+    var lines = base.split('\n');
+    base = lines.map(function (ln) {
+      if (ln.indexOf(' | ') < 0) return ln;
+      var cells = ln.split(' | ');
+      if (cells.length > 12) cells = cells.slice(0, 12);
+      cells = cells.map(function (c) { return c.length > 120 ? c.slice(0, 120) + '…' : c; });
+      return cells.join(' | ');
+    }).join('\n');
+  }
+  return base;
+}
+
+function showPreview() {
+  $('cardPreview').style.display = 'block';
+  $('fileInfo').textContent = state.fileName + ' · ' + (state.rawText.length).toLocaleString() + ' 字符';
+  var t = getTextForMask();
+  var ipN = 0, domN = 0;
+  var f = detectEntities(t, { ip: true, dom: true, mail: true });
+  for (var k in f) { if (f[k].kind === 'IP') ipN++; else if (f[k].kind === 'DOM') domN++; }
+  $('statBox').innerHTML =
+    '<div><b>' + (t.length).toLocaleString() + '</b>字符</div>' +
+    '<div><b>' + (state.tables.length) + '</b>张表格</div>' +
+    '<div><b>' + ipN + '</b>个 IP</div>' +
+    '<div><b>' + domN + '</b>个域名</div>';
+  var pv = t.length > 6000 ? t.slice(0, 6000) + '\n\n…（预览已截断，共 ' + t.length + ' 字符）' : t;
+  $('previewText').textContent = pv;
+  $('optTableOnly').onchange = showPreview;
+  $('optCompact').onchange = showPreview;
+}
+
+$('btnDemo').addEventListener('click', function () {
+  state.fileName = '示例报告.html';
+  state.tables = [[
+    ['序号', '漏洞名称', '风险等级', 'CVE 编号', '受影响资产', '端口/服务', 'URL', '漏洞描述', '修复建议'],
+    ['1', 'Apache Log4j2 远程代码执行', '高危', 'CVE-2021-44228', '10.20.30.11', '8080/http', 'http://app.corp-example.com:8080/api/login', 'Log4j2 版本 2.14.1，存在 JNDI 注入，可导致远程代码执行。', '升级至 2.17.1 以上'],
+    ['2', 'Apache Log4j2 远程代码执行', '高危', 'CVE-2021-44228', '10.20.30.12', '8443/https', 'https://pay.corp-example.com:8443/gateway', '同上组件，另一台主机。', '升级至 2.17.1 以上'],
+    ['3', 'Apache Log4j2 远程代码执行', '高危', 'CVE-2021-44228', '10.20.30.12', '9000/http', 'http://pay.corp-example.com:9000/', '同一主机另一端口。', '升级至 2.17.1 以上'],
+    ['4', 'SSL 弱加密套件', '中危', 'CVE-2016-2183', '10.20.30.21', '443/https', 'https://oa.corp-example.com/', '支持 3DES 等弱加密算法，存在 SWEET32 风险。', '禁用 3DES 加密套件'],
+    ['5', 'phpMyAdmin 未授权访问', '高危', '', '10.20.30.31', '80/http', 'http://10.20.30.31/phpmyadmin/', '管理后台无需认证即可访问。', '限制来源 IP 或下线'],
+    ['6', '目录遍历', '中危', '', '10.20.30.31', '80/http', 'http://10.20.30.31/files/', '存在 ../ 路径穿越，可读取任意文件。', '修复路径校验'],
+    ['7', 'OpenSSH 用户枚举', '低危', 'CVE-2018-15473', '10.20.30.41', '22/ssh', 'ssh://10.20.30.41:22', 'OpenSSH 7.4，存在用户名枚举。', '升级 OpenSSH'],
+    ['8', '信息泄露 - 目录列表', '低危', '', '10.20.30.31', '80/http', 'http://10.20.30.31/backup/', '目录可浏览，暴露备份文件。', '关闭目录浏览，清理备份'],
+    ['9', 'SSL 弱加密套件', '中危', 'CVE-2016-2183', '10.20.30.22', '443/https', 'https://mail.corp-example.com/', '同前一台，另一域名。', '禁用 3DES'],
+    ['10', 'MySQL 弱口令', '高危', '', '10.20.30.51', '3306/mysql', 'mysql://10.20.30.51:3306', 'root 账户使用弱口令，可远程登录。', '修改强口令并限制来源']
+  ]];
+  state.isTable = true;
+  state.rawText = '示例：某单位内网漏扫报告（mock 数据，用于演示流程）\n扫描时间：2026-10-22 09:00 ~ 12:00\n扫描器：示例漏扫系统\n联系人：admin@corp-example.com';
+  $('optTableOnly').checked = true;
+  showPreview();
+  toast('已载入示例报告，可以直接点"下一步：脱敏"');
+});
+
+$('btnToMask').addEventListener('click', function () {
+  var t = getTextForMask();
+  if (!t.trim()) { toast('没有可处理的内容', true); return; }
+  state.sanitizedForAI = t;
+  goStep(2);
+});
+
+/* ---------- 步骤2：脱敏 ---------- */
+$('btnMask').addEventListener('click', function () {
+  var src = state.sanitizedForAI || getTextForMask();
+  var opts = { ip: $('mIp').checked, dom: $('mDom').checked, mail: $('mMail').checked, mac: $('mMac').checked };
+  var found = detectEntities(src, opts);
+  var extras = $('extraWords').value.split(/[,，]/).map(function (s) { return s.trim(); }).filter(Boolean);
+  var map = buildMapping(found, extras);
+  if (!map.list.length) { toast('没有识别到需要脱敏的内容，检查勾选项', true); return; }
+
+  state.mapping = map;
+  state.masked = maskText(src, map);
+
+  var cnt = { IP: 0, DOM: 0, MAIL: 0, CUS: 0 };
+  map.list.forEach(function (x) { if (cnt[x.kind] !== undefined) cnt[x.kind]++; });
+
+  $('maskStat').innerHTML =
+    '<div><b>' + cnt.IP + '</b>个 IP</div>' +
+    '<div><b>' + cnt.DOM + '</b>个域名</div>' +
+    '<div><b>' + cnt.MAIL + '</b>个邮箱</div>' +
+    '<div><b>' + cnt.CUS + '</b>个自定义词</div>' +
+    '<div><b>' + state.masked.length.toLocaleString() + '</b>字符</div>';
+
+  var html = '';
+  map.list.forEach(function (x) {
+    var cls = x.kind === 'IP' ? 'ip' : (x.kind === 'DOM' ? 'dom' : (x.kind === 'MAIL' ? 'mail' : ''));
+    html += '<span class="tag ' + cls + '" title="' + esc2(x.value) + '">' + esc2(x.token) + ' ← ' + esc2(x.value) + '</span>';
+  });
+  $('entityList').innerHTML = html;
+  $('maskedText').textContent = state.masked;
+
+  var left = findLeftoverTokens(state.masked);
+  $('cardMasked').style.display = 'block';
+  $('btnSaveMap').disabled = false;
+  $('maskInfo').innerHTML = '已生成 ' + map.list.length + ' 个占位符';
+  toast('脱敏完成：' + map.list.length + ' 个敏感项已替换');
+});
+
+$('btnSaveMap').addEventListener('click', function () {
+  if (!state.mapping) return;
+  var data = {
+    created: new Date().toISOString(),
+    source: state.fileName,
+    reverse: state.mapping.reverse
+  };
+  downloadFile('mapping-' + stamp() + '.json', JSON.stringify(data, null, 2), 'application/json');
+  toast('映射表已导出，注意保管');
+});
+
+$('btnToAI').addEventListener('click', function () { goStep(3); refreshPayloadInfo(); });
+
+/* ---------- 步骤3：AI ---------- */
+function currentPrompt() {
+  return buildPrompt(state.masked || state.sanitizedForAI || '', {});
+}
+function refreshPayloadInfo() {
+  var p = currentPrompt();
+  $('payloadInfo').textContent = (p.length).toLocaleString() + ' 字符 · 约 ' + Math.round(p.length / 1.7).toLocaleString() + ' tokens';
+}
+refreshPayloadInfo();
+
+$('btnCopy').addEventListener('click', function () {
+  var p = currentPrompt();
+  copyText(p).then(function () { toast('已复制 ' + p.length.toLocaleString() + ' 字符，去粘贴给 AI 吧'); })
+    .catch(function () { toast('复制失败，请用"下载 payload.md"', true); });
+});
+$('btnDownloadPayload').addEventListener('click', function () {
+  downloadFile('payload-' + stamp() + '.md', currentPrompt(), 'text/markdown');
+  toast('payload.md 已下载');
+});
+
+function copyText(t) {
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+  return new Promise(function (res, rej) {
+    var ta = document.createElement('textarea');
+    ta.value = t; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy') ? res() : rej(); } catch (e) { rej(e); }
+    document.body.removeChild(ta);
+  });
+}
+
+/* API 设置记忆 */
+(function initApi() {
+  try {
+    var s = JSON.parse(localStorage.getItem('csai_api') || '{}');
+    if (s.base) $('apiBase').value = s.base;
+    if (s.model) $('apiModel').value = s.model;
+    if (s.key) $('apiKey').value = s.key;
+  } catch (e) { }
+})();
+
+$('btnRunApi').addEventListener('click', async function () {
+  var base = $('apiBase').value.trim().replace(/\/+$/, '');
+  var key = $('apiKey').value.trim();
+  var model = $('apiModel').value.trim();
+  if (!key) { toast('先填 API Key', true); return; }
+  if (!state.masked) { toast('请先完成第 2 步脱敏', true); return; }
+
+  if ($('rememberKey').checked) {
+    localStorage.setItem('csai_api', JSON.stringify({ base: base, model: model, key: key }));
+  } else {
+    localStorage.removeItem('csai_api');
+  }
+
+  var btn = this;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>分析中…';
+  $('apiOut').style.display = 'block';
+  $('apiText').textContent = '';
+  $('apiStatus').className = 'badge b-warn';
+  $('apiStatus').textContent = '运行中';
+  $('apiInfo').textContent = '请求已发出，长报告可能需要 1-3 分钟';
+
+  var acc = '';
+  try {
+    await callChatAPI(base, key, model, currentPrompt(), function (delta) {
+      acc += delta;
+      $('apiText').textContent = acc;
+      $('apiText').scrollTop = $('apiText').scrollHeight;
+    });
+    $('apiStatus').className = 'badge b-ok';
+    $('apiStatus').textContent = '完成';
+    $('apiInfo').textContent = '返回 ' + acc.length.toLocaleString() + ' 字符';
+    toast('分析完成');
+  } catch (e) {
+    $('apiStatus').className = 'badge b-err';
+    $('apiStatus').textContent = '失败';
+    $('apiInfo').textContent = e.message;
+    $('apiText').textContent = acc + '\n\n[错误] ' + e.message;
+    toast('调用失败：' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '开始分析';
+  }
+});
+
+async function callChatAPI(base, key, model, prompt, onDelta) {
+  var res = await fetch(base + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+    body: JSON.stringify({
+      model: model,
+      stream: true,
+      messages: [
+        { role: 'system', content: '你是严谨的网络安全分析专家。严格按用户要求的结构输出，保留所有 [[XXX_000]] 形式的占位符原文。' },
+        { role: 'user', content: prompt }
+      ]
+    })
+  });
+  if (!res.ok) {
+    var errTxt = '';
+    try { errTxt = (await res.text()).slice(0, 300); } catch (e) { }
+    throw new Error('HTTP ' + res.status + ' ' + errTxt);
+  }
+  if (!res.body || !res.body.getReader) {
+    var j = await res.json();
+    var c = j.choices && j.choices[0] && j.choices[0].message ? j.choices[0].message.content : '';
+    onDelta(c);
+    return c;
+  }
+  var reader = res.body.getReader();
+  var dec = new TextDecoder('utf-8');
+  var buf = '', full = '';
+  while (true) {
+    var r = await reader.read();
+    if (r.done) break;
+    buf += dec.decode(r.value, { stream: true });
+    var idx;
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      var line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (line.indexOf('data:') !== 0) continue;
+      var d = line.slice(5).trim();
+      if (!d || d === '[DONE]') continue;
+      try {
+        var jj = JSON.parse(d);
+        var t = jj.choices && jj.choices[0] && jj.choices[0].delta ? jj.choices[0].delta.content : '';
+        if (t) { full += t; onDelta(t); }
+      } catch (e) { }
+    }
+  }
+  return full;
+}
+
+$('btnCopyApiOut').addEventListener('click', function () {
+  copyText($('apiText').textContent).then(function () { toast('已复制'); });
+});
+$('btnApiToRestore').addEventListener('click', function () {
+  $('aiAnswer').value = $('apiText').textContent;
+  goStep(4);
+  doRestore();
+});
+
+/* ---------- 步骤4：还原 ---------- */
+$('btnLoadMap').addEventListener('click', function () { $('mapFile').click(); });
+$('mapFile').addEventListener('change', function () {
+  if (!this.files.length) return;
+  var f = this.files[0];
+  var r = new FileReader();
+  r.onload = function () {
+    try {
+      var j = JSON.parse(r.result);
+      var rev = j.reverse || j;
+      if (!rev || typeof rev !== 'object') throw new Error('结构不对');
+      state.mapping = state.mapping || {};
+      state.mapping.reverse = rev;
+      $('mapInfo').textContent = '已载入 ' + Object.keys(rev).length + ' 条映射';
+      toast('映射表已载入');
+    } catch (e) { toast('映射表解析失败：' + e.message, true); }
+  };
+  r.readAsText(f, 'utf-8');
+});
+
+function doRestore() {
+  var txt = $('aiAnswer').value;
+  if (!txt.trim()) { toast('先粘贴 AI 的分析结果', true); return; }
+  var rev = state.mapping && state.mapping.reverse ? state.mapping.reverse : null;
+  if (!rev) {
+    var left = findLeftoverTokens(txt);
+    if (left.length) {
+      $('restoreInfo').textContent = '没有映射表，' + left.length + ' 个占位符无法还原';
+      toast('缺少映射表：请在第 2 步导出过 mapping.json 并在此导入', true);
+    } else {
+      $('restoreInfo').textContent = '未发现占位符，按原文渲染';
+    }
+  } else {
+    var before = txt;
+    txt = restoreText(txt, rev);
+    var leftTok = findLeftoverTokens(txt);
+    $('restoreInfo').innerHTML = '已还原 ' + Object.keys(rev).length + ' 条映射' +
+      (leftTok.length ? ' · <span style="color:#f87171">仍有 ' + leftTok.length + ' 个占位符未匹配</span>' : ' · 无残留占位符');
+  }
+  state.report = txt;
+  $('mdOut').innerHTML = mdToHtml(txt);
+  $('cardReport').style.display = 'block';
+  $('cardReport').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+$('btnRestore').addEventListener('click', doRestore);
+var autoTid;
+$('aiAnswer').addEventListener('input', function () {
+  if (!$('autoRestore').checked) return;
+  clearTimeout(autoTid);
+  autoTid = setTimeout(function () {
+    if ($('aiAnswer').value.trim().length > 30) doRestore();
+  }, 900);
+});
+
+/* ---------- 导出 ---------- */
+function stamp() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+}
+function downloadFile(name, content, mime) {
+  var blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+$('btnSaveHtml').addEventListener('click', function () {
+  var body = $('mdOut').innerHTML;
+  var html = '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">'
+    + '<title>漏扫分析报告 ' + stamp() + '</title><style>'
+    + 'body{font:14px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:960px;margin:0 auto;padding:32px 24px;color:#222}'
+    + 'h1,h2,h3{line-height:1.35}h2{border-bottom:1px solid #e3e8ee;padding-bottom:6px;margin-top:26px}'
+    + 'code{background:#f4f6f8;padding:1px 5px;border-radius:3px;font-family:Consolas,monospace;font-size:12.5px}'
+    + 'pre{background:#f7f9fb;border:1px solid #e3e8ee;border-radius:6px;padding:14px;overflow:auto}'
+    + 'pre code{background:none;padding:0}'
+    + 'table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}'
+    + 'th,td{border:1px solid #dde3ea;padding:7px 10px;text-align:left;vertical-align:top}'
+    + 'th{background:#f2f5f8}blockquote{border-left:3px solid #f39c12;margin:10px 0;padding:6px 14px;color:#666}'
+    + '.meta{color:#888;font-size:12px;border-bottom:1px solid #eee;padding-bottom:14px;margin-bottom:24px}'
+    + '</style></head><body>'
+    + '<div class="meta">漏扫报告 AI 分析结果 · 生成时间 ' + new Date().toLocaleString('zh-CN')
+    + ' · 来源 ' + esc2(state.fileName || '-') + ' · 数据已脱敏后再还原</div>'
+    + body + '</body></html>';
+  downloadFile('漏扫分析报告-' + stamp() + '.html', html, 'text/html');
+  toast('HTML 报告已下载');
+});
+
+$('btnSaveMd').addEventListener('click', function () {
+  downloadFile('漏扫分析报告-' + stamp() + '.md', state.report || $('aiAnswer').value, 'text/markdown');
+  toast('Markdown 已下载');
+});
+$('btnPrint').addEventListener('click', function () { window.print(); });
+
+/* ================= 步骤5：跨次扫描 Diff ================= */
+var dstate = {
+  base: { rows: [], headers: [], map: {} },
+  ret: { rows: [], headers: [], map: {} },
+  diff: null
+};
+
+function loadDsvInto(which, text, fileName) {
+  var rows = parseDSV(text);
+  if (!rows.length) { toast('没解析到任何行，检查一下分隔符', true); return; }
+  var headers = rows[0];
+  var body = rows.slice(1);
+  if (!body.length) { toast('只有表头没有数据行', true); return; }
+  var side = dstate[which];
+  side.headers = headers;
+  side.rows = body;
+  side.map = autoMapFields(headers);
+  var infoEl = $(which === 'base' ? 'baseInfo' : 'retInfo');
+  infoEl.textContent = (fileName ? fileName + ' · ' : '') + body.length + ' 行 × ' + headers.length + ' 列';
+  renderMapping();
+  $('cardMap').style.display = 'block';
+  toast((which === 'base' ? '基线' : '复测') + '解析完成：' + body.length + ' 行');
+}
+
+function renderMapping() {
+  var fields = ['asset', 'vuln', 'cve', 'port', 'path', 'sev', 'cvss', 'epss', 'kev'];
+  ['base', 'ret'].forEach(function (side) {
+    var box = $(side === 'base' ? 'mapBaseGrid' : 'mapRetGrid');
+    var s = dstate[side];
+    if (!s.headers.length) { box.innerHTML = '<span class="tiny">尚未导入</span>'; return; }
+    var html = '';
+    fields.forEach(function (f) {
+      html += '<div><label>' + FIELD_LABELS[f] + '</label><select data-side="' + side + '" data-field="' + f + '">';
+      html += '<option value="-1">（不使用）</option>';
+      s.headers.forEach(function (h, i) {
+        var sel = (s.map[f] === i) ? ' selected' : '';
+        html += '<option value="' + i + '"' + sel + '>' + esc2(normText(h) || ('列' + (i + 1))) + '</option>';
+      });
+      html += '</select></div>';
+    });
+    box.innerHTML = html;
+  });
+  document.querySelectorAll('#mapBaseGrid select, #mapRetGrid select').forEach(function (sel) {
+    sel.addEventListener('change', function () {
+      var side = sel.dataset.side, field = sel.dataset.field;
+      var v = parseInt(sel.value, 10);
+      if (v < 0) delete dstate[side].map[field];
+      else dstate[side].map[field] = v;
+    });
+  });
+}
+
+$('btnBaseFile').addEventListener('click', function () { $('baseFile').click(); });
+$('btnRetFile').addEventListener('click', function () { $('retFile').click(); });
+
+function readTextFile(file, cb) {
+  var r = new FileReader();
+  r.onload = function () { cb(String(r.result || '')); };
+  r.readAsText(file, 'utf-8');
+}
+
+$('baseFile').addEventListener('change', function () {
+  if (this.files.length) readTextFile(this.files[0], function (t) {
+    $('baseText').value = t; loadDsvInto('base', t, this.files[0].name);
+  }.bind(this));
+});
+$('retFile').addEventListener('change', function () {
+  if (this.files.length) readTextFile(this.files[0], function (t) {
+    $('retText').value = t; loadDsvInto('ret', t, this.files[0].name);
+  }.bind(this));
+});
+
+$('diffMode').addEventListener('change', function () {
+  $('diffModeNote').style.display = (this.value === 'strict') ? 'none' : 'block';
+});
+
+$('btnDiff').addEventListener('click', function () {
+  if ($('baseText').value.trim() && !dstate.base.rows.length) loadDsvInto('base', $('baseText').value, '');
+  if ($('retText').value.trim() && !dstate.ret.rows.length) loadDsvInto('ret', $('retText').value, '');
+  if (!dstate.base.rows.length || !dstate.ret.rows.length) { toast('两份报告都要先导入', true); return; }
+  if (dstate.base.map.asset == null || dstate.ret.map.asset == null) {
+    toast('没识别到「资产」列，请在上方字段映射里手动指定', true); return;
+  }
+  dstate.diff = computeDiff(dstate.base.rows, dstate.ret.rows, dstate.base.map, dstate.ret.map, {
+    mode: $('diffMode').value,
+    ignoreQuery: $('diffIgnoreQuery').checked
+  });
+  $('cardDiff').style.display = 'block';
+  renderDiff();
+  toast('比对完成');
+});
+
+var DEMO_BASE = '资产IP,端口,协议,漏洞名称,风险等级,CVE编号,URL\n'
++ '10.20.30.11,8080,http,Apache Log4j2 远程代码执行,高危,CVE-2021-44228,http://app.corp-example.com:8080/api/login\n'
++ '10.20.30.12,8443,https,Apache Log4j2 远程代码执行,高危,CVE-2021-44228,https://pay.corp-example.com:8443/gateway\n'
++ '10.20.30.21,443,https,SSL 弱加密套件,中危,CVE-2016-2183,https://oa.corp-example.com/\n'
++ '10.20.30.31,80,http,phpMyAdmin 未授权访问,高危,,http://10.20.30.31/phpmyadmin/\n'
++ '10.20.30.31,80,http,目录遍历,中危,,http://10.20.30.31/files/\n'
++ '10.20.30.41,22,ssh,OpenSSH 用户枚举,低危,CVE-2018-15473,ssh://10.20.30.41:22\n'
++ '10.20.30.51,3306,mysql,MySQL 弱口令,高危,,mysql://10.20.30.51:3306\n'
++ '10.20.30.61,80,http,目录列表信息泄露,低危,,http://10.20.30.61/backup/';
+
+var DEMO_RET = '资产IP,端口,协议,漏洞名称,风险等级,CVE编号,URL\n'
++ '10.20.30.12,8443,https,Apache Log4j2 远程代码执行,高危,CVE-2021-44228,https://pay.corp-example.com:8443/gateway\n'
++ '10.20.30.21,443,https,SSL 弱加密套件,中危,CVE-2016-2183,https://oa.corp-example.com/\n'
++ '10.20.30.31,80,http,phpMyAdmin 未授权访问,高危,,http://10.20.30.31/phpmyadmin/\n'
++ '10.20.30.41,22,ssh,OpenSSH 用户枚举,低危,CVE-2018-15473,ssh://10.20.30.41:22\n'
++ '10.20.30.51,3306,mysql,MySQL 弱口令,严重,,mysql://10.20.30.51:3306\n'
++ '10.20.30.71,80,http,ThinkPHP 远程命令执行,严重,CVE-2018-20062,http://10.20.30.71/index.php\n'
++ '10.20.30.72,8080,http,Redis 未授权访问,高危,,http://10.20.30.72:8080/\n'
++ '10.20.30.21,443,https,HTTPS 证书过期,低危,,https://oa.corp-example.com/';
+
+$('btnDiffDemo').addEventListener('click', function () {
+  $('baseText').value = DEMO_BASE;
+  $('retText').value = DEMO_RET;
+  loadDsvInto('base', DEMO_BASE, '基线扫描(示例)');
+  loadDsvInto('ret', DEMO_RET, '复测扫描(示例)');
+  toast('示例已载入，点「开始比对」');
+});
+
+function sevBadge(sev) { return '<span class="sev sv-' + sev + '">' + sevLabel(sev) + '</span>'; }
+
+function itemHtml(it, kind) {
+  var isPair = (kind === 'remain' || kind === 'probable');
+  var f = isPair ? it.base : it;
+  var html = '<div class="res-item ' + kind + '">';
+  html += '<div class="t">' + esc2(f.vuln || '(未命名漏洞)') + '</div>';
+  html += '<div class="m">' + esc2(f.asset || '(未知资产)');
+  if (f.port) html += ':' + esc2(f.port);
+  html += '</div>';
+  if (f.cve) html += '<div class="m">' + esc2(f.cve) + '</div>';
+  if (f.pathRaw) html += '<div class="m">' + esc2(f.pathRaw) + '</div>';
+  if (isPair) {
+    var d = sevDelta(it.base.sev, it.cur.sev);
+    var arrow = d === 'up' ? '<span class="up">↑</span>' : (d === 'down' ? '<span class="down">↓</span>' : '<span class="same">=</span>');
+    html += '<div style="margin-top:4px">' + sevBadge(it.base.sev) + '→ ' + sevBadge(it.cur.sev) + ' ' + arrow + '</div>';
+    if (kind === 'probable') html += '<div class="tiny" style="color:#c4b5fd">端口/路径有变化，需人工确认是否同一漏洞</div>';
+  } else {
+    html += '<div style="margin-top:4px">' + sevBadge(f.sev) + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function currentFilter() {
+  var mode = $('diffFilter').value;
+  var kw = $('diffSearch').value.trim().toLowerCase();
+  return function (f) {
+    if (mode === 'newhigh' && !(f.sev === 'high' || f.sev === 'critical')) return false;
+    if (mode === 'high' && !(f.sev === 'high' || f.sev === 'critical')) return false;
+    if (kw) {
+      var hay = ((f.asset || '') + ' ' + (f.vuln || '') + ' ' + (f.cve || '') + ' ' + (f.pathRaw || '')).toLowerCase();
+      if (hay.indexOf(kw) < 0) return false;
+    }
+    return true;
+  };
+}
+
+function renderDiff() {
+  var d = dstate.diff;
+  if (!d) return;
+  var c = d.counts;
+  $('diffKpi').innerHTML =
+    '<div class="k ok"><b>' + c.fixed + '</b><span>已修复</span></div>' +
+    '<div class="k warn"><b>' + c.remain + '</b><span>仍存在</span></div>' +
+    '<div class="k err"><b>' + c.added + '</b><span>新增</span></div>' +
+    '<div class="k pur"><b>' + c.probable + '</b><span>疑似（待人工）</span></div>' +
+    '<div class="k"><b>' + c.base + '→' + c.ret + '</b><span>上轮 / 本轮条数</span></div>';
+
+  var pass = currentFilter();
+  var fixedF = d.fixed.filter(pass);
+  var remainF = d.remain.filter(function (it) { return pass(it.base) || pass(it.cur); });
+  var addedF = d.added.filter(pass);
+  var probF = d.probable.filter(function (it) { return pass(it.base) || pass(it.cur); });
+
+  function col(title, arr, kind, count) {
+    var body = arr.length ? arr.map(function (it) { return itemHtml(it, kind); }).join('')
+      : '<div class="tiny" style="padding:12px;text-align:center">没有条目</div>';
+    return '<div class="res-card"><div class="res-head">' + title +
+      '<span class="cnt">' + count + '</span></div><div class="res-body">' + body + '</div></div>';
+  }
+  $('diffCols').innerHTML =
+    col('✅ 已修复', fixedF, 'fixed', fixedF.length) +
+    col('⚠️ 仍存在', remainF, 'remain', remainF.length) +
+    col('🆕 新增', addedF, 'added', addedF.length);
+
+  if (probF.length) {
+    $('diffCols').innerHTML += col('❓ 疑似（需人工）', probF, 'probable', probF.length);
+  }
+
+  if ($('aggByAsset').checked) {
+    $('diffViews').style.display = 'none';
+    $('aggView').style.display = 'block';
+    var agg = aggregateByAsset(d);
+    var rows = agg.map(function (o) {
+      var st = o.cleared ? '<span class="badge b-ok">已清零</span>'
+        : '<span class="badge b-err">未清零</span>';
+      return '<tr><td>' + esc2(o.asset) + '</td><td class="num">' + o.total + '</td><td class="num">' +
+        o.fixed + '</td><td class="num">' + o.remain + '</td><td class="num">' + o.added +
+        '</td><td class="num">' + o.probable + '</td><td>' + st + '</td></tr>';
+    }).join('');
+    $('aggView').innerHTML = '<table class="rank"><thead><tr><th>资产</th><th>总条数</th><th>已修复</th>' +
+      '<th>仍存在</th><th>新增</th><th>疑似</th><th>状态</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } else {
+    $('diffViews').style.display = 'block';
+    $('aggView').style.display = 'none';
+  }
+}
+
+$('diffFilter').addEventListener('change', renderDiff);
+$('aggByAsset').addEventListener('change', renderDiff);
+$('diffSearch').addEventListener('input', renderDiff);
+
+function diffToText(d) {
+  var lines = ['# 修复验证结果（基线 → 复测）', ''];
+  lines.push('已修复 ' + d.counts.fixed + ' 条，仍存在 ' + d.counts.remain + ' 条，新增 ' + d.counts.added + ' 条，疑似 ' + d.counts.probable + ' 条。');
+  lines.push('', '## 已修复');
+  d.fixed.forEach(function (f) { lines.push('- ' + f.asset + (f.port ? ':' + f.port : '') + ' | ' + f.vuln + (f.cve ? ' | ' + f.cve : '') + ' | ' + f.pathRaw); });
+  lines.push('', '## 仍存在');
+  d.remain.forEach(function (it) { lines.push('- ' + it.base.asset + (it.base.port ? ':' + it.base.port : '') + ' | ' + it.base.vuln + ' | ' + sevLabel(it.base.sev) + '→' + sevLabel(it.cur.sev)); });
+  lines.push('', '## 新增');
+  d.added.forEach(function (f) { lines.push('- ' + f.asset + (f.port ? ':' + f.port : '') + ' | ' + f.vuln + (f.cve ? ' | ' + f.cve : '') + ' | ' + sevLabel(f.sev)); });
+  if (d.probable.length) {
+    lines.push('', '## 疑似（需人工确认）');
+    d.probable.forEach(function (it) { lines.push('- ' + it.base.asset + ' | ' + it.base.vuln + ' | 端口/路径变化'); });
+  }
+  return lines.join('\n');
+}
+
+$('btnDiffCsv').addEventListener('click', function () {
+  if (!dstate.diff) return;
+  var d = dstate.diff, out = ['状态,资产,端口,漏洞名称,CVE,上一轮等级,本轮等级,路径'];
+  function esc(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  d.fixed.forEach(function (f) { out.push(['已修复', f.asset, f.port, f.vuln, f.cve, sevLabel(f.sev), '', f.pathRaw].map(esc).join(',')); });
+  d.remain.forEach(function (it) { out.push(['仍存在', it.base.asset, it.base.port, it.base.vuln, it.base.cve, sevLabel(it.base.sev), sevLabel(it.cur.sev), it.base.pathRaw].map(esc).join(',')); });
+  d.added.forEach(function (f) { out.push(['新增', f.asset, f.port, f.vuln, f.cve, '', sevLabel(f.sev), f.pathRaw].map(esc).join(',')); });
+  d.probable.forEach(function (it) { out.push(['疑似', it.base.asset, it.base.port, it.base.vuln, it.base.cve, sevLabel(it.base.sev), sevLabel(it.cur.sev), it.base.pathRaw].map(esc).join(',')); });
+  downloadFile('修复验证结果-' + stamp() + '.csv', '\uFEFF' + out.join('\n'), 'text/csv');
+  toast('CSV 已导出');
+});
+
+/* 复用脱敏能力：Diff 结果直接脱敏后拿去发给 AI */
+$('btnDiffMaskCopy').addEventListener('click', function () {
+  if (!dstate.diff) { toast('先做一次比对', true); return; }
+  var txt = diffToText(dstate.diff);
+  var found = detectEntities(txt, { ip: true, dom: true, mail: true });
+  var map = buildMapping(found, []);
+  var masked = map.list.length ? maskText(txt, map) : txt;
+  copyText(masked).then(function () {
+    $('diffCopyInfo').textContent = map.list.length ? ('已脱敏 ' + map.list.length + ' 项') : '未发现需脱敏内容';
+    toast('已复制脱敏结果，可直接发给 AI 复核');
+  }).catch(function () { toast('复制失败', true); });
+});
+
+/* ================= 步骤6：可解释优先级重算 ================= */
+var pstate = { list: [], rank: null, intel: { epss: {}, kev: {} } };
+
+function parsePrioInput() {
+  var text = $('prioText').value.trim();
+  if (!text) { toast('先粘贴漏洞表或 CVE 列表', true); return; }
+  var list = [];
+  var first = text.split(/\r?\n/)[0] || '';
+  var looksTable = /[,;\t|]/.test(first);
+  if (looksTable) {
+    var rows = parseDSV(text);
+    if (rows.length < 2) { toast('表格至少要有表头 + 一行数据', true); return; }
+    var map = autoMapFields(rows[0]);
+    if (map.asset == null && map.cve == null) { toast('没识别到资产列或 CVE 列', true); return; }
+    for (var i = 1; i < rows.length; i++) list.push(buildFinding(rows[i], map));
+  } else {
+    var seen = {};
+    var re = /CVE-\d{4}-\d{3,}/ig, m;
+    while ((m = re.exec(text)) !== null) {
+      var id = m[0].toUpperCase();
+      if (seen[id]) continue;
+      seen[id] = 1;
+      list.push(buildFinding(['', id], { asset: 0, cve: 1 }));
+    }
+  }
+  if (!list.length) { toast('没解析出条目', true); return; }
+  pstate.list = list;
+  $('prioInfo').textContent = list.length + ' 条';
+  renderRank();
+  toast('已解析 ' + list.length + ' 条');
+}
+
+function currentWeights() {
+  return {
+    kev: parseInt($('wKev').value, 10),
+    epss: parseInt($('wEpss').value, 10),
+    cvss: parseInt($('wCvss').value, 10),
+    exp: parseInt($('wExp').value, 10)
+  };
+}
+
+function renderRank() {
+  if (!pstate.list.length) return;
+  var W = currentWeights();
+  var res = scoreFindings(pstate.list, W, { authDiscount: $('authDiscount').checked }, pstate.intel);
+  pstate.rank = res;
+  $('cardRank').style.display = 'block';
+
+  var noKev = Object.keys(pstate.intel.kev).length === 0;
+  var noEpss = Object.keys(pstate.intel.epss).length === 0;
+  var msgs = [];
+  if (noKev) msgs.push('KEV 数据未加载 → KEV 组分一律按 0 计，排序会偏保守');
+  if (noEpss) msgs.push('EPSS 数据未加载 → EPSS 组分按 0 计');
+  $('warnNoKev').innerHTML = msgs.length ? ('⚠️ ' + msgs.join('；')) : '';
+
+  var rows = res.map(function (r, i) {
+    var f = r.f;
+    var barW = Math.max(2, Math.min(100, r.score));
+    return '<tr>'
+      + '<td class="num">' + (i + 1) + '</td>'
+      + '<td>' + esc2(f.asset || '(无资产)') + '</td>'
+      + '<td>' + esc2(f.vuln || '(仅 CVE)') + '</td>'
+      + '<td>' + esc2(f.cve || '') + '</td>'
+      + '<td>' + (f.sev === 'unknown' ? '<span class="tiny">—</span>' : sevBadge(f.sev)) + '</td>'
+      + '<td class="num">' + (r.cvssHas ? Number(r.cvss).toFixed(1) : '<span class="tiny">推定' + Number(r.cvss).toFixed(1) + '</span>') + '</td>'
+      + '<td class="num">' + (r.epss != null ? Number(r.epss).toFixed(3) : '<span class="tiny">—</span>') + '</td>'
+      + '<td>' + (r.kev ? '<span class="badge b-err">是</span>' : '<span class="tiny">否</span>') + '</td>'
+      + '<td class="num"><b>' + r.score.toFixed(1) + '</b><div class="bar"><i style="width:' + barW + '%"></i></div></td>'
+      + '<td class="explain">' + esc2(r.parts.join('；')) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  $('rankTable').innerHTML = '<thead><tr><th>#</th><th>资产</th><th>漏洞</th><th>CVE</th><th>等级</th>'
+    + '<th>CVSS</th><th>EPSS</th><th>KEV</th><th>综合分</th><th>拆解（可解释）</th></tr></thead><tbody>'
+    + rows + '</tbody>';
+  $('rankInfo').textContent = '共 ' + res.length + ' 条，按综合分降序';
+}
+
+['wKev', 'wEpss', 'wCvss', 'wExp'].forEach(function (id) {
+  var el = $(id);
+  el.addEventListener('input', function () {
+    $('v' + id.slice(1)).textContent = el.value;
+    renderRank();
+  });
+});
+$('authDiscount').addEventListener('change', renderRank);
+$('btnResetW').addEventListener('click', function () {
+  $('wKev').value = 40; $('wEpss').value = 35; $('wCvss').value = 15; $('wExp').value = 10;
+  $('vKev').textContent = 40; $('vEpss').textContent = 35; $('vCvss').textContent = 15; $('vExp').textContent = 10;
+  renderRank();
+});
+
+$('prioFileBtn').addEventListener('click', function () { $('prioFile').click(); });
+$('prioFile').addEventListener('change', function () {
+  if (!this.files.length) return;
+  readTextFile(this.files[0], function (t) { $('prioText').value = t; parsePrioInput(); });
+});
+
+/* 把 Diff 结果直接带进优先级重算 */
+$('prioFromDiff').addEventListener('click', function () {
+  if (!dstate.diff) { toast('先到第 5 步做一次比对', true); return; }
+  var d = dstate.diff;
+  var list = [];
+  d.added.forEach(function (f) { list.push(f); });
+  d.remain.forEach(function (it) { list.push(it.cur); });
+  if (!list.length) { toast('Diff 里没有可重算的条目', true); return; }
+  pstate.list = list;
+  $('prioInfo').textContent = list.length + ' 条（来自 Diff）';
+  renderRank();
+  toast('已从 Diff 带入 ' + list.length + ' 条');
+});
+
+$('prioText').addEventListener('input', function () {
+  clearTimeout(window.__prioTid);
+  window.__prioTid = setTimeout(function () {
+    if ($('prioText').value.trim().length > 10) parsePrioInput();
+  }, 800);
+});
+
+/* ---- 情报数据 ---- */
+$('epssManual').addEventListener('input', function () {
+  var m = parseEpssText(this.value);
+  for (var k in m) if (m.hasOwnProperty(k)) pstate.intel.epss[k] = m[k];
+  updateIntelStatus(); renderRank();
+});
+$('kevManual').addEventListener('input', function () {
+  var m = parseKevText(this.value);
+  for (var k in m) if (m.hasOwnProperty(k)) pstate.intel.kev[k] = true;
+  updateIntelStatus(); renderRank();
+});
+
+function updateIntelStatus() {
+  var e = Object.keys(pstate.intel.epss).length, k = Object.keys(pstate.intel.kev).length;
+  var s = [];
+  if (e) s.push('EPSS ' + e + ' 条');
+  if (k) s.push('KEV ' + k + ' 条');
+  $('intelStatus').textContent = s.length ? s.join(' · ') : '未加载';
+}
+
+$('kevFileBtn').addEventListener('click', function () { $('kevFile').click(); });
+$('kevFile').addEventListener('change', function () {
+  if (!this.files.length) return;
+  readTextFile(this.files[0], function (t) {
+    try {
+      var map = indexKevJson(JSON.parse(t));
+      var n = 0;
+      for (var k in map) if (map.hasOwnProperty(k)) { pstate.intel.kev[k] = true; n++; }
+      updateIntelStatus(); renderRank();
+      toast('已导入 KEV ' + n + ' 条');
+    } catch (e) { toast('JSON 解析失败：' + e.message, true); }
+  });
+});
+
+$('btnFetchIntel').addEventListener('click', async function () {
+  var btn = this;
+  var cves = {};
+  pstate.list.forEach(function (f) { if (f.cve) cves[f.cve] = 1; });
+  var ids = Object.keys(cves);
+  if (!ids.length) { toast('表里没有 CVE 编号，无法联网补全', true); return; }
+
+  btn.disabled = true;
+  var old = btn.textContent;
+  btn.innerHTML = '<span class="spin"></span>拉取中…';
+  $('intelStatus').textContent = '正在拉取…';
+
+  try {
+    /* EPSS：FIRST 官方，支持 CORS，按 100 分批 */
+    var epssN = 0;
+    for (var i = 0; i < ids.length; i += 100) {
+      var chunk = ids.slice(i, i + 100);
+      var url = 'https://api.first.org/data/v1/epss?cve=' + chunk.join(',');
+      var r = await fetch(url, { mode: 'cors' });
+      if (!r.ok) throw new Error('EPSS HTTP ' + r.status);
+      var j = await r.json();
+      (j.data || []).forEach(function (it) {
+        var ep = parseFloat(it.epss);
+        if (!isNaN(ep)) { pstate.intel.epss[String(it.cve).toUpperCase()] = ep; epssN++; }
+      });
+    }
+    /* KEV：走 jsDelivr 镜像（官方站不给 CORS 头） */
+    var kevN = 0;
+    try {
+      var kr = await fetch('https://cdn.jsdelivr.net/gh/cisagov/kev-data@main/known_exploited_vulnerabilities.json', { mode: 'cors' });
+      if (kr.ok) {
+        var kj = await kr.json();
+        var km = indexKevJson(kj);
+        for (var kk in km) if (km.hasOwnProperty(kk)) { pstate.intel.kev[kk] = true; kevN++; }
+      }
+    } catch (e2) { /* KEV 失败不阻塞 EPSS */ }
+
+    updateIntelStatus(); renderRank();
+    toast('EPSS ' + epssN + ' 条' + (kevN ? ' / KEV ' + kevN + ' 条' : ' / KEV 拉取失败，可用「导入 KEV JSON」'));
+    if (!kevN) {
+      $('warnNoKev').innerHTML = '⚠️ KEV 未加载（镜像不可达）。请点「导入 KEV JSON」手动加载，或在下方手工粘贴。';
+    }
+  } catch (e) {
+    $('intelStatus').textContent = '拉取失败';
+    toast('联网补全失败：' + e.message + '（现场无网时请用手工/文件导入）', true);
+  } finally {
+    btn.disabled = false; btn.textContent = old;
+  }
+});
+
+$('btnRankCsv').addEventListener('click', function () {
+  if (!pstate.rank) return;
+  function esc(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var out = ['排名,资产,漏洞名称,CVE,等级,CVSS,EPSS,KEV,综合分,拆解'];
+  pstate.rank.forEach(function (r, i) {
+    out.push([i + 1, r.f.asset, r.f.vuln, r.f.cve, sevLabel(r.f.sev),
+      r.cvssHas ? Number(r.cvss).toFixed(1) : '推定' + Number(r.cvss).toFixed(1),
+      r.epss != null ? Number(r.epss).toFixed(3) : '',
+      r.kev ? '是' : '否', r.score.toFixed(1), r.parts.join('；')].map(esc).join(','));
+  });
+  downloadFile('优先级重算-' + stamp() + '.csv', '\uFEFF' + out.join('\n'), 'text/csv');
+  toast('CSV 已导出');
+});
+
+$('btnRankMaskCopy').addEventListener('click', function () {
+  if (!pstate.rank) return;
+  var lines = ['# 优先级重算结果', '', '排名 | 资产 | 漏洞 | CVE | 等级 | 综合分 | 拆解'];
+  pstate.rank.forEach(function (r, i) {
+    lines.push((i + 1) + ' | ' + (r.f.asset || '-') + ' | ' + (r.f.vuln || '-') + ' | ' + (r.f.cve || '-')
+      + ' | ' + sevLabel(r.f.sev) + ' | ' + r.score.toFixed(1) + ' | ' + r.parts.join('；'));
+  });
+  var txt = lines.join('\n');
+  var found = detectEntities(txt, { ip: true, dom: true, mail: true });
+  var map = buildMapping(found, []);
+  var masked = map.list.length ? maskText(txt, map) : txt;
+  copyText(masked).then(function () {
+    $('rankInfo').textContent = '已复制' + (map.list.length ? '（脱敏 ' + map.list.length + ' 项）' : '');
+    toast('已复制脱敏结果');
+  }).catch(function () { toast('复制失败', true); });
+});
+
+/* 启动时提示 */
+(function () {
+  if (!localStorage.getItem('csai_seen')) {
+    localStorage.setItem('csai_seen', '1');
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>应急响应作战台 · Linux / Windows</title>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#151b23;--bg3:#1c232d;--line:#28313d;
+  --fg:#e0e6ef;--fg2:#8b98a8;--fg3:#5d6b7c;
+  --acc:#4a9eff;--acc2:#1f6fd0;
+  --crit:#f85149;--high:#ff8f4d;--med:#e3b341;--low:#3fb950;--info:#58a6ff;
+  --mono:"Cascadia Code",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.65 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding-bottom:60px}
+header{background:linear-gradient(135deg,#111823,#1a2432);border-bottom:1px solid var(--line);
+  padding:14px 24px;position:sticky;top:0;z-index:50}
+.hd{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:17px;font-weight:600;letter-spacing:.3px}
+h1 em{font-style:normal;color:var(--acc)}
+.pg{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--fg2)}
+.pgbar{width:170px;height:7px;background:var(--bg3);border-radius:4px;overflow:hidden;border:1px solid var(--line)}
+.pgbar i{display:block;height:100%;background:linear-gradient(90deg,#1f6fd0,#4a9eff);width:0;transition:.3s}
+nav{display:flex;gap:2px;padding:0 24px;background:var(--bg2);border-bottom:1px solid var(--line);
+  position:sticky;top:63px;z-index:49;overflow-x:auto}
+nav button{background:none;border:none;border-bottom:2px solid transparent;color:var(--fg2);
+  padding:11px 16px;font-size:13.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+nav button:hover{color:var(--fg)}
+nav button.on{color:var(--acc);border-bottom-color:var(--acc)}
+main{max-width:1300px;margin:0 auto;padding:20px 24px}
+section{display:none}
+section.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:16px 18px;margin-bottom:14px}
+.card h2{margin:0 0 12px;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h2 .n{background:var(--acc2);color:#fff;width:20px;height:20px;border-radius:5px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:8px 14px;
+  cursor:pointer;font-size:13px;display:flex;align-items:center;gap:7px;transition:.15s}
+.chip:hover{border-color:var(--acc);color:var(--acc)}
+.chip.on{background:#12304d;border-color:var(--acc);color:#cfe6ff}
+.chip .ic{font-size:15px}
+.chip small{color:var(--fg3);font-size:11px}
+.plat{display:inline-flex;background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:3px;margin-bottom:14px}
+.plat button{background:none;border:none;color:var(--fg2);padding:7px 18px;border-radius:5px;
+  cursor:pointer;font-size:13px;font-family:inherit}
+.plat button.on{background:var(--acc2);color:#fff}
+.brief{background:#12202e;border-left:3px solid var(--acc);padding:10px 14px;border-radius:0 6px 6px 0;
+  font-size:13px;color:#b9c9db;margin-bottom:14px}
+.blk{margin-bottom:16px}
+.blk>h3{margin:0 0 8px;font-size:13.5px;font-weight:600;color:#c9d6e4;
+  display:flex;align-items:center;gap:7px}
+.blk>h3 .tag{font-size:11px;padding:1px 7px;border-radius:3px;font-family:var(--mono);font-weight:400}
+.t-sign{background:#2b1a1a;color:#ff9d95;border:1px solid #5a2b2b}
+.t-conf{background:#2b2413;color:#f0cf70;border:1px solid #5a4a1e}
+.t-stop{background:#2b1a13;color:#ffab70;border:1px solid #5a3520}
+.t-clean{background:#132b1c;color:#7ee2a0;border:1px solid #1e5a35}
+.t-harden{background:#13202b;color:#7fc4f0;border:1px solid #1e455a}
+ul.plain{margin:0;padding-left:20px}
+ul.plain li{margin:4px 0;font-size:13px;color:#c3cfdd}
+ul.plain li::marker{color:var(--fg3)}
+.step{background:var(--bg3);border:1px solid var(--line);border-left:3px solid #2f3a47;
+  border-radius:6px;padding:10px 13px;margin-bottom:9px}
+.step.done{border-left-color:var(--low);background:#121e17}
+.step-h{display:flex;align-items:flex-start;gap:9px;margin-bottom:7px}
+.step-h input{width:16px;height:16px;margin-top:2px;accent-color:var(--low);cursor:pointer;flex:0 0 auto}
+.step-h b{font-size:13.5px;font-weight:600}
+.step.done .step-h b{color:var(--fg2);text-decoration:line-through;text-decoration-color:var(--fg3)}
+.cmd{position:relative;background:#0a0e13;border:1px solid #1e2733;border-radius:5px;margin:5px 0}
+.cmd pre{margin:0;padding:9px 62px 9px 12px;font-family:var(--mono);font-size:12px;color:#a8c7e0;
+  white-space:pre-wrap;word-break:break-all;line-height:1.55}
+.cmd .cp{position:absolute;top:5px;right:5px;background:#1c2733;border:1px solid #2b3746;color:var(--fg2);
+  font-size:11px;padding:3px 9px;border-radius:4px;cursor:pointer;font-family:inherit}
+.cmd .cp:hover{background:var(--acc2);color:#fff;border-color:var(--acc2)}
+.tip{font-size:12px;color:var(--fg2);margin-top:6px;padding-left:2px}
+.tip b{color:#e3b341}
+.tip.warn{color:#ffb37a}
+.kpi{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.kpi .k{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:8px 15px;min-width:96px}
+.kpi .k b{display:block;font-size:20px;font-family:var(--mono);line-height:1.25}
+.kpi .k span{font-size:11px;color:var(--fg2)}
+.kpi .k.ok b{color:var(--low)}.kpi .k.warn b{color:var(--med)}
+.phase{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.phase:last-child{border-bottom:none}
+.phase .num{flex:0 0 34px;height:34px;border-radius:50%;background:var(--acc2);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px}
+.phase .body{flex:1}
+.phase .body h4{margin:0 0 4px;font-size:13.5px}
+.phase .body p{margin:0 0 6px;font-size:12.5px;color:var(--fg2)}
+.phase .body ul{margin:4px 0 0;padding-left:18px;font-size:12.5px;color:#b8c6d6}
+.tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.tool{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:10px 13px}
+.tool b{font-size:13px}
+.tool p{margin:3px 0 0;font-size:12px;color:var(--fg2)}
+.tool .src{font-size:11px;color:var(--fg3);font-family:var(--mono);margin-top:3px}
+select,input[type=text],textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  color:var(--fg);padding:7px 10px;font-size:13px;font-family:inherit;outline:none;width:100%}
+select:focus,input[type=text]:focus,textarea:focus{border-color:var(--acc)}
+textarea{resize:vertical;font-size:12.5px;line-height:1.6}
+label.fld{display:block;margin-bottom:10px}
+label.fld>span{display:block;font-size:12px;color:var(--fg2);margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr}}
+button.btn{background:var(--acc2);color:#fff;border:none;border-radius:6px;padding:9px 18px;
+  cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+button.btn:hover{background:var(--acc)}
+button.ghost{background:none;border:1px solid var(--line);color:var(--fg2)}
+button.ghost:hover{border-color:var(--acc);color:var(--acc);background:none}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+pre.script{background:#0a0e13;border:1px solid #1e2733;border-radius:7px;padding:14px;
+  font-family:var(--mono);font-size:11.5px;color:#a8c7e0;max-height:460px;overflow:auto;
+  white-space:pre;line-height:1.5}
+.mini{font-size:11.5px;color:var(--fg3)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:var(--acc2);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;
+  opacity:0;transition:.25s;z-index:99;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--crit)}
+.hintbox{background:#1a2030;border:1px dashed #35435a;border-radius:7px;padding:11px 14px;
+  font-size:12.5px;color:var(--fg2);margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hd">
+    <h1>应急响应<em>作战台</em> <span class="mini">挖矿 / 勒索 / 银狐 / WebShell / 外联 / 黑链</span></h1>
+    <div class="pg">
+      <span>当前场景进度</span>
+      <div class="pgbar"><i id="pgFill"></i></div>
+      <span id="pgTxt">0 / 0</span>
+      <button class="btn ghost" id="btnReset" style="padding:5px 11px;font-size:12px">清空勾选</button>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button data-tab="scene" class="on">① 场景排查</button>
+  <button data-tab="base">② 通用基线</button>
+  <button data-tab="flow">③ 流程与工具</button>
+  <button data-tab="script">④ 一键采集</button>
+  <button data-tab="report">⑤ 出具报告</button>
+</nav>
+
+<main>
+
+<!-- ============ 1. 场景 ============ -->
+<section id="s-scene" class="on">
+  <div class="chips" id="chips"></div>
+  <div class="plat" id="plat">
+    <button data-p="win" class="on">Windows</button>
+    <button data-p="linux">Linux</button>
+  </div>
+  <div id="sceneBody"></div>
+</section>
+
+<!-- ============ 2. 基线 ============ -->
+<section id="s-base">
+  <div class="hintbox">
+    场景之外，接手一台机器先跑这一遍：账号、服务、计划任务、启动项、网络、日志。
+    很多事件（银狐、挖矿、远控）就是在这几步里露头的。勾选同样会写进报告。
+  </div>
+  <div class="plat" id="plat2">
+    <button data-p="win" class="on">Windows 基线</button>
+    <button data-p="linux">Linux 基线</button>
+  </div>
+  <div id="baseBody"></div>
+</section>
+
+<!-- ============ 3. 流程与工具 ============ -->
+<section id="s-flow">
+  <div class="card">
+    <h2><span class="n">流</span>标准处置流程（7 个阶段）</h2>
+    <div id="phases"></div>
+  </div>
+  <div class="card">
+    <h2><span class="n">具</span>出场前要准备的工具</h2>
+    <div class="hintbox">
+      现场经常没网、没权限装东西。U 盘里常备下面这些，比到现场再下载靠谱。
+      所有工具都<b>从官方或可信镜像</b>获取，用前先校验哈希。
+    </div>
+    <div class="tools" id="tools"></div>
+  </div>
+</section>
+
+<!-- ============ 4. 脚本 ============ -->
+<section id="s-script">
+  <div class="card">
+    <h2><span class="n">采</span>一键提取现场信息</h2>
+    <div class="hintbox">
+      脚本<b>只读</b>：只做查询、导出、打包，不删除、不停服务、不改配置。<br>
+      跑完会在桌面/临时目录生成一个压缩包，直接拖进报告里当附件。
+    </div>
+    <div class="row" style="margin-bottom:12px">
+      <button class="btn" id="btnPs">下载 Windows 采集脚本（.ps1）</button>
+      <button class="btn ghost" id="btnSh">下载 Linux 采集脚本（.sh）</button>
+      <button class="btn ghost" id="btnCopyPs">复制 PowerShell 全文</button>
+      <button class="btn ghost" id="btnCopySh">复制 Bash 全文</button>
+    </div>
+    <div class="row" style="margin-bottom:8px">
+      <div class="plat" style="margin:0">
+        <button data-p="ps" class="on">PowerShell</button>
+        <button data-p="sh">Bash</button>
+      </div>
+      <span class="mini" id="scriptMeta"></span>
+    </div>
+    <pre class="script" id="scriptPre"></pre>
+  </div>
+</section>
+
+<!-- ============ 5. 报告 ============ -->
+<section id="s-report">
+  <div class="card">
+    <h2><span class="n">报</span>应急响应报告</h2>
+    <div class="hintbox">
+      下面填的部分 + 你在「场景排查/通用基线」里勾过的步骤，会一起生成报告。
+      没勾也能导出，报告里就只有你手填的内容。
+    </div>
+    <div class="grid2">
+      <label class="fld"><span>客户 / 单位</span><input type="text" id="f_client" placeholder="某某公司"></label>
+      <label class="fld"><span>系统 / 业务名称</span><input type="text" id="f_sys" placeholder="OA 系统、官网、财务服务器"></label>
+      <label class="fld"><span>事件类型</span><input type="text" id="f_event" placeholder="挖矿木马（自动带出当前场景）"></label>
+      <label class="fld"><span>受影响平台</span><input type="text" id="f_plat" placeholder="Windows Server 2016 / CentOS 7"></label>
+      <label class="fld"><span>发现时间</span><input type="text" id="f_time" placeholder="2025-01-01 10:00"></label>
+      <label class="fld"><span>处置人 / 单位</span><input type="text" id="f_who" placeholder="张三 / 应急响应组"></label>
+    </div>
+    <label class="fld"><span>影响范围（受影响主机、账号、业务中断情况）</span>
+      <textarea id="f_scope" rows="2" placeholder="例：3 台应用服务器（10.0.0.5/6/7）CPU 满载，业务响应变慢，未中断"></textarea></label>
+    <label class="fld"><span>定性结论</span>
+      <select id="f_verdict">
+        <option value="确认存在">确认存在（已取得直接证据）</option>
+        <option value="高度疑似">高度疑似（证据充分但缺关键一环）</option>
+        <option value="未发现">未发现（排查后排除）</option>
+      </select></label>
+    <label class="fld"><span>处置措施与结果</span>
+      <textarea id="f_action" rows="3" placeholder="例：断网隔离 → 取证 → 结束进程并删除样本 → 清理计划任务 → 修改全部口令 → 修复 Redis 未授权 → 观察 24h 无复现"></textarea></label>
+    <label class="fld"><span>加固建议 / 遗留风险</span>
+      <textarea id="f_harden" rows="2" placeholder="例：Redis 禁止公网暴露；全网排查同版本镜像；建议上线 HIDS"></textarea></label>
+
+    <div class="kpi" id="repKpi"></div>
+
+    <div class="row" style="margin-top:6px">
+      <button class="btn" id="btnExpHtml">导出 HTML 报告</button>
+      <button class="btn ghost" id="btnExpMd">导出 Markdown</button>
+      <button class="btn ghost" id="btnPreview">预览报告</button>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<!-- ==================== 采集脚本原文（text/plain，避免转义问题） ==================== -->
+<script type="text/plain" id="ps-script">
+<#
+================================================================
+ 应急响应 · Windows 现场信息采集脚本（只读，不修改系统）
+================================================================
+ 用法：
+   1) 右键「使用 PowerShell 运行」，或管理员 PowerShell 中执行
+      powershell -ExecutionPolicy Bypass -File collect-ir.ps1
+   2) 输出：桌面 IR-<主机名>-<时间戳>\*.txt，并自动打包 zip
+ 说明：
+   - 全部为查询类命令，不删除、不停服务、不改注册表
+   - 建议先在断网状态执行，避免攻击者感知
+================================================================
+#>
+
+$ErrorActionPreference = 'SilentlyContinue'
+$ProgressPreference    = 'SilentlyContinue'
+
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$out   = Join-Path ([Environment]::GetFolderPath('Desktop')) ("IR-{0}-{1}" -f $env:COMPUTERNAME, $stamp)
+New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+function Save-Section {
+    param([string]$Name, [scriptblock]$Block)
+    $file = Join-Path $out ("{0}.txt" -f $Name)
+    "===== $Name  @ $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') =====" | Out-File -FilePath $file -Encoding UTF8
+    try { & $Block | Out-String -Width 500 | Out-File -FilePath $file -Append -Encoding UTF8 }
+    catch { "采集失败: $($_.Exception.Message)" | Out-File -FilePath $file -Append -Encoding UTF8 }
+    Write-Host ("[+] {0}" -f $Name) -ForegroundColor DarkGray
+}
+
+Write-Host "开始采集，输出目录：$out" -ForegroundColor Cyan
+
+Save-Section '00-环境说明' {
+    "主机名      : $env:COMPUTERNAME"
+    "当前用户    : $env:USERNAME"
+    "采集时间    : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+    "系统时间UTC : $((Get-Date).ToUniversalTime())"
+    "时区        : $((Get-TimeZone).DisplayName)"
+    "---- 本脚本只读，未修改任何系统状态 ----"
+}
+
+Save-Section '01-系统信息' {
+    systeminfo
+    "`n---- 补丁 ----"
+    Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 30 HotFixID,Description,InstalledOn
+    "`n---- 启动时间 ----"
+    (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+}
+
+Save-Section '02-账号' {
+    "---- 本地用户 ----"
+    Get-LocalUser | Select-Object Name,Enabled,LastLogon,Description
+    "---- 管理员组 ----"
+    net localgroup administrators
+    "---- 全部账户(SID) ----"
+    wmic useraccount get Name,SID,Status,Disabled 2>$null
+    "---- 注册表 ProfileList（隐藏账户常在此留痕）----"
+    Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList' |
+        ForEach-Object { $_.PSChildName + '  ' + (Get-ItemProperty $_.PSPath).ProfileImagePath }
+}
+
+Save-Section '03-服务与驱动' {
+    "---- 服务（重点看非 System32 路径）----"
+    Get-CimInstance Win32_Service |
+        Select-Object Name,DisplayName,State,StartMode,StartName,PathName |
+        Sort-Object PathName | Format-Table -AutoSize
+    "---- 内核驱动 ----"
+    Get-CimInstance Win32_SystemDriver | Select-Object Name,State,StartMode,PathName
+}
+
+Save-Section '04-计划任务' {
+    "---- 计划任务（非 Microsoft 路径）----"
+    Get-ScheduledTask |
+        Where-Object { $_.TaskPath -notmatch '^\\Microsoft' } |
+        Select-Object TaskName,TaskPath,State,
+            @{n='Exe';e={ ($_.Actions | ForEach-Object { $_.Execute }) -join ';' }},
+            @{n='Arg';e={ ($_.Actions | ForEach-Object { $_.Arguments }) -join ';' }} |
+        Format-Table -AutoSize
+    "---- 全量明细 ----"
+    schtasks /query /fo LIST /v
+}
+
+Save-Section '05-启动项与注册表' {
+    "---- 启动项 ----"
+    Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User
+    "---- Run / RunOnce ----"
+    $keys = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+        'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+    )
+    foreach ($k in $keys) {
+        "== $k"
+        if (Test-Path $k) { (Get-ItemProperty $k).PSObject.Properties |
+            Where-Object { $_.Name -notmatch '^PS' } |
+            ForEach-Object { "   {0} = {1}" -f $_.Name, $_.Value } }
+    }
+    "---- Winlogon ----"
+    Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' |
+        Select-Object Shell,Userinit,Taskman
+    "---- AppInit_DLLs ----"
+    Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows' |
+        Select-Object AppInit_DLLs,LoadAppInit_DLLs
+    "---- IFEO 劫持 ----"
+    Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options' |
+        ForEach-Object {
+            $d = (Get-ItemProperty $_.PSPath).Debugger
+            if ($d) { "{0}  ->  {1}" -f $_.PSChildName, $d }
+        }
+    "---- 启动文件夹 ----"
+    Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup",
+                  "$env:ProgramData\Microsoft\Windows\Start Menu\Programs\Startup" |
+        Select-Object FullName,LastWriteTime
+}
+
+Save-Section '06-WMI订阅（无文件持久化）' {
+    "---- __EventFilter ----"
+    Get-WmiObject -Namespace root\Subscription -Class __EventFilter |
+        Select-Object Name,Query,EventNamespace
+    "---- __EventConsumer ----"
+    Get-WmiObject -Namespace root\Subscription -Class __EventConsumer |
+        Select-Object Name,ExecutablePath,ScriptText
+    "---- __FilterToConsumerBinding ----"
+    Get-WmiObject -Namespace root\Subscription -Class __FilterToConsumerBinding |
+        Select-Object Filter,Consumer
+}
+
+Save-Section '07-进程' {
+    "---- 进程列表 ----"
+    Get-CimInstance Win32_Process |
+        Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine,CreationDate |
+        Sort-Object CreationDate | Format-List
+    "---- CPU 占用 TOP ----"
+    Get-Process | Sort-Object CPU -Descending | Select-Object -First 20 Id,ProcessName,CPU,Path
+    "---- 无签名进程 ----"
+    Get-Process | Where-Object { $_.Path } | ForEach-Object {
+        $s = Get-AuthenticodeSignature $_.Path
+        if ($s.Status -ne 'Valid') {
+            "{0}`t{1}`t{2}`t{3}" -f $_.Id, $_.ProcessName, $s.Status, $_.Path
+        }
+    }
+}
+
+Save-Section '08-网络连接' {
+    "---- netstat -anob ----"
+    netstat -anob
+    "---- 已建立连接 ----"
+    Get-NetTCPConnection -State Established |
+        Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,OwningProcess,State |
+        Sort-Object RemotePort | Format-Table -AutoSize
+    "---- 监听端口 ----"
+    Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess
+    "---- DNS 缓存 ----"
+    ipconfig /displaydns
+    "---- 路由 ----"
+    route print
+    "---- hosts ----"
+    Get-Content "$env:SystemRoot\System32\drivers\etc\hosts"
+}
+
+Save-Section '09-安全日志' {
+    "---- 登录成功 4624（最近 60 条）----"
+    Get-WinEvent -FilterHashtable @{LogName='Security';Id=4624} -MaxEvents 60 |
+        Select-Object TimeCreated,@{n='Msg';e={ ($_.Message -split "`n")[0] }}
+    "---- 登录失败 4625（最近 60 条）----"
+    Get-WinEvent -FilterHashtable @{LogName='Security';Id=4625} -MaxEvents 60 |
+        Select-Object TimeCreated,@{n='Msg';e={ ($_.Message -split "`n")[0] }}
+    "---- 服务安装 7045（最近 40 条）----"
+    Get-WinEvent -FilterHashtable @{LogName='System';Id=7045} -MaxEvents 40 |
+        Select-Object TimeCreated,Message
+    "---- 进程创建 4688（需开启审核，最近 80 条）----"
+    Get-WinEvent -FilterHashtable @{LogName='Security';Id=4688} -MaxEvents 80 |
+        Select-Object TimeCreated,Message
+}
+
+Save-Section '10-可疑文件' {
+    "---- 常见落地点近 30 天可执行文件 ----"
+    $dirs = @($env:TEMP, $env:APPDATA, $env:LOCALAPPDATA, "$env:SystemDrive\ProgramData", "$env:SystemDrive\Users\Public")
+    Get-ChildItem $dirs -Recurse -Include *.exe,*.dll,*.bat,*.ps1,*.vbs,*.js -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime -gt (Get-Date).AddDays(-30) } |
+        Select-Object FullName,Length,LastWriteTime |
+        Sort-Object LastWriteTime -Descending | Format-Table -AutoSize
+    "---- 临时目录可执行文件 ----"
+    Get-ChildItem $env:TEMP, "$env:SystemDrive\Windows\Temp" -Recurse -Include *.exe -ErrorAction SilentlyContinue |
+        Select-Object FullName,Length,LastWriteTime
+}
+
+Save-Section '11-开机自启目录快照' {
+    Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved' -Recurse -ErrorAction SilentlyContinue |
+        ForEach-Object { $_.Name }
+    Get-CimInstance Win32_ComputerSystem | Select-Object Name,Domain,Manufacturer,Model
+}
+
+Write-Host "打包中..." -ForegroundColor Cyan
+$zip = "$out.zip"
+Compress-Archive -Path $out -DestinationPath $zip -Force
+Write-Host ""
+Write-Host "采集完成：$zip" -ForegroundColor Green
+Write-Host "请连同哈希一起归档：" -ForegroundColor Yellow
+Get-FileHash $zip -Algorithm SHA256 | Select-Object Hash,Path | Format-List
+</script>
+
+<script type="text/plain" id="sh-script">
+#!/usr/bin/env bash
+# ================================================================
+#  应急响应 · Linux 现场信息采集脚本（只读，不修改系统）
+# ================================================================
+#  用法：
+#     chmod +x collect-ir.sh
+#     sudo ./collect-ir.sh
+#  输出：
+#     /tmp/ir-<主机名>-<时间戳>/  （各分节 txt）+ 同名 tar.gz
+#  说明：
+#     - 全部为查询类命令，不删除、不停服务、不改配置
+#     - 建议断网状态执行；如怀疑命令被替换，先看下面「可信度自检」
+# ================================================================
+
+set -u
+[ "$(id -u)" -ne 0 ] && { echo "请用 root 运行"; exit 1; }
+
+OUT="/tmp/ir-$(hostname)-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$OUT"
+chmod 700 "$OUT"
+
+sec() {
+  local name="$1"; shift
+  {
+    echo "===== $name  @ $(date '+%Y-%m-%d %H:%M:%S') ====="
+    eval "$@"
+  } >"$OUT/$name.txt" 2>&1
+  echo "[+] $name"
+}
+
+echo "开始采集，输出目录：$OUT"
+
+sec "00-环境说明" 'echo "主机名: $(hostname)"; echo "时间: $(date)"; echo "内核: $(uname -a)"; echo "---- 本脚本只读 ----"'
+
+sec "01-系统信息" 'uname -a; cat /etc/os-release 2>/dev/null; uptime; date; hostnamectl 2>/dev/null; echo; echo "---- 启动时间 ----"; who -b'
+
+# 命令可信度自检：如果 ls/ps/netstat 被替换，这里能看出异常
+sec "01b-命令可信度自检" 'for c in ps ls netstat ss top find grep awk; do p=$(command -v $c); [ -n "$p" ] && { printf "%-8s %s  " "$c" "$p"; ls -l "$p" 2>/dev/null | awk "{print \$5, \$6, \$7, \$8}"; rpm -V $(rpm -qf "$p" 2>/dev/null) 2>/dev/null | head -3; }; done'
+
+sec "02-账号与权限" 'echo "---- UID=0 账号（重点）----"; awk -F: "\$3==0{print}" /etc/passwd; echo; echo "---- 可登录 shell 账号 ----"; awk -F: "\$7 ~ /(sh|bash|zsh)$/{print}" /etc/passwd; echo; echo "---- /etc/passwd 全文 ----"; cat /etc/passwd; echo; echo "---- 最近修改的 passwd/shadow ----"; ls -l --time-style=full-iso /etc/passwd /etc/shadow /etc/group'
+
+sec "03-sudo与SSH" 'echo "---- sudoers ----"; cat /etc/sudoers 2>/dev/null; echo; ls -la /etc/sudoers.d/ 2>/dev/null; cat /etc/sudoers.d/* 2>/dev/null; echo; echo "---- authorized_keys（所有用户）----"; find / -xdev -name authorized_keys -exec ls -l {} \; -exec cat {} \; 2>/dev/null; echo; echo "---- sshd_config 关键项 ----"; grep -vE "^\s*#|^\s*$" /etc/ssh/sshd_config 2>/dev/null'
+
+sec "04-登录记录" 'echo "---- 当前登录 ----"; w; echo; echo "---- 最近登录 last ----"; last -a | head -40; echo; echo "---- 失败登录 lastb ----"; lastb 2>/dev/null | head -30; echo; echo "---- auth 日志中的成功登录 ----"; grep -aE "Accepted (password|publickey)" /var/log/auth.log /var/log/secure 2>/dev/null | tail -40; echo; echo "---- 暴力破解来源 TOP ----"; grep -a "Failed password" /var/log/auth.log /var/log/secure 2>/dev/null | grep -oE "from [0-9.]+" | sort | uniq -c | sort -rn | head -20'
+
+sec "05-进程" 'echo "---- 全进程树 ----"; ps -ef --forest 2>/dev/null || ps -ef; echo; echo "---- CPU TOP 20 ----"; ps aux --sort=-%cpu | head -21; echo; echo "---- 已删除但仍运行的进程（挖矿典型）----"; ls -l /proc/*/exe 2>/dev/null | grep -i deleted; echo; echo "---- 可疑进程的完整命令行 ----"; for p in $(ps -eo pid --no-headers); do d=$(readlink /proc/$p/exe 2>/dev/null); case "$d" in *deleted*|/tmp/*|/dev/shm/*|/var/tmp/*) echo "PID=$p EXE=$d"; tr "\0" " " < /proc/$p/cmdline 2>/dev/null; echo;; esac; done'
+
+sec "06-网络" 'echo "---- ss -antp ----"; ss -antp 2>/dev/null || netstat -antp; echo; echo "---- 已建立连接 ----"; ss -antp state established 2>/dev/null; echo; echo "---- UDP ----"; ss -unap 2>/dev/null; echo; echo "---- 监听端口 ----"; ss -lntup 2>/dev/null; echo; echo "---- lsof -i ----"; lsof -i -P -n 2>/dev/null | head -80'
+
+sec "07-服务" 'echo "---- 运行中的服务 ----"; systemctl list-units --type=service --state=running --no-pager 2>/dev/null; echo; echo "---- 最近修改的 unit ----"; ls -lt --time-style=full-iso /etc/systemd/system/*.service /etc/systemd/system/*.timer 2>/dev/null | head -30; echo; echo "---- 全部 unit 文件 ----"; systemctl list-unit-files --type=service --no-pager 2>/dev/null | head -80'
+
+sec "08-定时任务" 'echo "---- 各用户 crontab ----"; for u in $(cut -f1 -d: /etc/passwd); do echo "== $u"; crontab -l -u "$u" 2>/dev/null; done; echo; echo "---- /etc/crontab ----"; cat /etc/crontab 2>/dev/null; echo; echo "---- cron.d / cron.* ----"; ls -la /etc/cron.d/ /etc/cron.hourly/ /etc/cron.daily/ 2>/dev/null; cat /etc/cron.d/* 2>/dev/null; echo; echo "---- systemd timer ----"; systemctl list-timers --all --no-pager 2>/dev/null'
+
+sec "09-开机自启与预加载" 'echo "---- rc.local ----"; cat /etc/rc.local 2>/dev/null; echo; echo "---- /etc/init.d ----"; ls -lt /etc/init.d/ 2>/dev/null; echo; echo "---- ld.so.preload（重点，正常为空）----"; cat /etc/ld.so.preload 2>/dev/null; echo "[EOF]"; echo; echo "---- ld.so.conf.d ----"; ls -la /etc/ld.so.conf.d/ 2>/dev/null; echo; echo "---- 用户 shell 配置尾部 ----"; for f in /root/.bashrc /root/.bash_profile /root/.profile /home/*/.bashrc /home/*/.bash_profile; do [ -f "$f" ] && { echo "== $f"; tail -20 "$f"; }; done'
+
+sec "10-临时目录与可疑文件" 'echo "---- /tmp /var/tmp /dev/shm 可执行文件 ----"; find /tmp /var/tmp /dev/shm -type f -perm -111 -ls 2>/dev/null | head -60; echo; echo "---- 近 3 天修改的文件（排除系统目录）----"; find / -xdev -mtime -3 -type f \( -path /proc -o -path /sys -o -path /var/lib -o -path /usr/share -o -path /var/log \) -prune -o -mtime -3 -type f -print 2>/dev/null | head -80'
+
+sec "11-SUID与权限" 'echo "---- SUID 文件 ----"; find / -xdev -perm -4000 -type f -ls 2>/dev/null | head -40; echo; echo "---- 全局可写目录 ----"; find / -xdev -type d -perm -0002 -ls 2>/dev/null | head -20; echo; echo "---- 全局可写文件 ----"; find /etc /usr/bin /usr/sbin -xdev -type f -perm -0002 -ls 2>/dev/null | head -20'
+
+sec "12-内核模块" 'echo "---- lsmod ----"; lsmod; echo; echo "---- /proc/modules ----"; head -60 /proc/modules; echo; echo "---- 可疑模块 ----"; lsmod | grep -iE "hide|rootkit|diamorphine|reptile|azazel" || echo "无明显可疑模块名"'
+
+sec "13-日志" 'echo "---- journalctl 最近 300 行 ----"; journalctl -n 300 --no-pager 2>/dev/null; echo; echo "---- dmesg ----"; dmesg | tail -80 2>/dev/null; echo; echo "---- /var/log/messages 尾部 ----"; tail -100 /var/log/messages 2>/dev/null'
+
+sec "14-Web服务（如存在）" 'echo "---- 运行中的 web 进程 ----"; ps -ef | grep -E "nginx|httpd|apache|tomcat|php-fpm" | grep -v grep; echo; echo "---- 网站根目录新增脚本（近 7 天）----"; for d in /var/www /usr/share/nginx/html /home/*/public_html /opt/tomcat/webapps; do [ -d "$d" ] && { echo "== $d"; find "$d" -type f \( -name "*.php" -o -name "*.jsp" -o -name "*.jspx" -o -name "*.aspx" \) -mtime -7 -ls 2>/dev/null | head -30; }; done; echo; echo "---- 可疑函数特征 ----"; for d in /var/www /usr/share/nginx/html; do [ -d "$d" ] && grep -rnaE "eval\(|assert\(|base64_decode\(|gzinflate\(|shell_exec\(|passthru\(|popen\(|system\(" "$d" --include=*.php 2>/dev/null | head -30; done'
+
+sec "15-网络栈快照" 'echo "---- /proc/net/tcp ----"; cat /proc/net/tcp | head -40; echo; echo "---- iptables ----"; iptables -L -n 2>/dev/null | head -60; echo; echo "---- 路由 ----"; ip route 2>/dev/null'
+
+echo "打包中..."
+TAR="/tmp/$(basename "$OUT").tar.gz"
+tar czf "$TAR" -C /tmp "$(basename "$OUT")" 2>/dev/null
+chmod 600 "$TAR"
+
+echo ""
+echo "采集完成：$TAR"
+echo "哈希（请一并归档）："
+sha256sum "$TAR"
+echo ""
+echo "提示：如果 /etc/ld.so.preload 非空，说明动态库被劫持，"
+echo "      ps、netstat、ls 等命令的输出可能不可信，请用 busybox 交叉验证。"
+</script>
+
+<script>
+/* =========================================================
+   数据区：6 类事件 × 2 平台
+   命令用 String.raw 包裹，路径里的反斜杠不会被吃掉
+   ========================================================= */
+var R = String.raw;
+
+var SCENES = [
+{
+  id:'miner', icon:'⛏', name:'挖矿木马', level:'高发',
+  brief:'CPU/GPU 被占满，绝大多数入口是弱口令、Redis/Mongo 未授权、Web 组件 Nday。特征是"杀了又活"。',
+  win:{
+    signs:[
+      'CPU/GPU 长期 90% 以上，风扇满转、主机发烫，业务变慢但不宕机',
+      '进程名伪装成 svchost.exe / lsass.exe / dwm.exe，但路径在 %TEMP%、%APPDATA%、C:\\ProgramData',
+      '杀掉进程几分钟后又出现——说明有计划任务/服务/WMI 定时拉起',
+      '外连 3333/4444/5555/7777/14444/45700 等矿池端口，或连接已知矿池域名',
+      '任务管理器里看不到高占用进程，但 CPU 确实满（进程被挂钩隐藏）'
+    ],
+    steps:[
+      {t:'定位高占用进程', cmds:[
+        R`Get-Process | Sort-Object CPU -Descending | Select-Object -First 15 Id,ProcessName,CPU,Path`,
+        R`Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine | Format-List`
+      ], note:'命令行里出现 <b>stratum+tcp://</b>、<b>--donate-level</b>、钱包地址，基本可以定性。'},
+      {t:'看进程树，找父进程', cmds:[
+        R`Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessId,ParentProcessId,Name,CommandLine`,
+        R`Get-CimInstance Win32_Process | Where-Object {$_.ParentProcessId -eq <PID>} | Select-Object ProcessId,Name,CommandLine`
+      ], note:'父进程常是 cmd.exe / powershell.exe，也可能已经退出（父进程挂空）。'},
+      {t:'查外联与端口', cmds:[
+        R`netstat -anob | findstr ESTABLISHED`,
+        R`Get-NetTCPConnection -State Established | Select-Object LocalPort,RemoteAddress,RemotePort,OwningProcess | Sort-Object RemotePort`
+      ], note:'把 RemoteAddress 拿去威胁情报平台查，别只看端口。'},
+      {t:'查持久化：服务 / 计划任务 / 启动项', cmds:[
+        R`Get-CimInstance Win32_Service | Where-Object {$_.PathName -notmatch 'C:\\Windows'} | Select-Object Name,State,StartMode,PathName`,
+        R`Get-ScheduledTask | Where-Object {$_.Actions.Execute -notmatch 'C:\\Windows'} | Select-Object TaskName,TaskPath,@{n='Exe';e={$_.Actions.Execute}}`,
+        R`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /s`
+      ], note:'挖矿通常至少两个持久化点互相守护，只清一个会复活。'},
+      {t:'查 WMI 无文件持久化', cmds:[
+        R`Get-WmiObject -Namespace root\Subscription -Class __EventFilter`,
+        R`Get-WmiObject -Namespace root\Subscription -Class CommandLineEventConsumer`,
+        R`Get-WmiObject -Namespace root\Subscription -Class __FilterToConsumerBinding`
+      ], note:'正常机器这三项基本为空，有内容就要逐个溯源。'},
+      {t:'查落地文件', cmds:[
+        R`Get-ChildItem $env:TEMP,$env:APPDATA,"C:\ProgramData","C:\Users\Public" -Include *.exe,*.dll,*.bat,*.ps1 -Recurse -ErrorAction SilentlyContinue | Where-Object {$_.LastWriteTime -gt (Get-Date).AddDays(-30)} | Select-Object FullName,Length,LastWriteTime`
+      ], note:''},
+      {t:'取哈希，查家族', cmds:[
+        R`Get-FileHash "<可疑文件路径>" -Algorithm SHA256`
+      ], note:'先取证再删除。<b>文件删了样本就没了</b>，后续没法确认家族。'}
+    ],
+    confirm:[
+      '进程路径位于用户可写目录，且数字签名无效（Get-AuthenticodeSignature 返回 NotSigned/Invalid）',
+      '命令行或配置文件出现矿池地址、stratum 协议、钱包地址',
+      '与矿池 IP/域名存在稳定心跳外连',
+      '存在指向同一程序的计划任务/服务，删除后自动复活'
+    ],
+    stop:[
+      '断网（禁用网卡或拔网线），<b>不要直接关机</b>——先保留内存和进程现场',
+      '记录 PID、完整路径、SHA256、命令行、外连 IP 后再结束进程树',
+      '先「禁用」而不是删除计划任务与自启服务，避免证据丢失',
+      '立即修改本机所有高权限账号口令（挖矿基本都来自弱口令或 RCE）'
+    ],
+    clean:[
+      '结束进程树 → 删除落地文件 → 清理计划任务/服务/启动项/WMI 订阅',
+      '排查入口：RDP 弱口令、Redis/Mongo 未授权、Weblogic/Shiro/Log4j 等 Nday、Jenkins 未授权',
+      '全盘查杀 + 观察 24 小时无复现',
+      '检查同网段是否有横向（445/135 连接）'
+    ],
+    harden:[
+      '3389/445 不对公网暴露，管理走堡垒机',
+      '强口令 + 双因素，禁用或改名默认账号',
+      'EDR/HIDS 限制 %TEMP%、%APPDATA% 目录执行',
+      '及时打补丁，重点 Log4j / Shiro / Weblogic / Fastjson'
+    ]
+  },
+  linux:{
+    signs:[
+      'top 里 kdevtmpfsi / kinsing / xmrig / sysupdate 等占用极高',
+      '进程还在跑，但 /proc/<pid>/exe 显示 (deleted)——文件已被删',
+      'crontab 出现 curl xxx | bash、wget + chmod +x、或一长串 base64',
+      '网卡流量异常，外连矿池端口（3333/5555/14444 等）'
+    ],
+    steps:[
+      {t:'定位高 CPU 进程', cmds:[
+        R`top -c -o %CPU | head -20`,
+        R`ps aux --sort=-%cpu | head -20`
+      ], note:''},
+      {t:'看进程真实身份（关键）', cmds:[
+        R`ls -l /proc/<PID>/exe`,
+        R`cat /proc/<PID>/cmdline | tr '\0' ' '`,
+        R`ls -l /proc/<PID>/cwd`
+      ], note:'exe 指向 <b>(deleted)</b> 或 /tmp、/dev/shm，是挖矿的典型特征。'},
+      {t:'查外联', cmds:[
+        R`ss -antp | grep ESTAB`,
+        R`lsof -p <PID> -a -i`
+      ], note:''},
+      {t:'查持久化：crontab / systemd', cmds:[
+        R`crontab -l; cat /etc/crontab; ls -l /etc/cron.d/ /etc/cron.hourly/`,
+        R`for u in $(cut -f1 -d: /etc/passwd); do echo "== $u"; crontab -l -u $u 2>/dev/null; done`,
+        R`systemctl list-units --type=service --state=running`,
+        R`ls -lt /etc/systemd/system/*.service | head`
+      ], note:''},
+      {t:'查动态库劫持（必看）', cmds:[
+        R`cat /etc/ld.so.preload`
+      ], note:'正常应为空或文件不存在。一旦有内容，说明 <b>ls/ps/netstat 可能已被替换</b>，后续命令结果都不可信，需要 busybox 交叉验证。'},
+      {t:'查落地文件', cmds:[
+        R`find /tmp /var/tmp /dev/shm -type f -perm -u+x -ls 2>/dev/null`,
+        R`ls -la /root /home/*/ 2>/dev/null | head -50`
+      ], note:''},
+      {t:'查入口（怎么进来的）', cmds:[
+        R`grep -aE "Accepted (password|publickey)" /var/log/auth.log /var/log/secure 2>/dev/null | tail -50`,
+        R`last -a | head -20`,
+        R`ss -lntup | grep -E "6379|27017|9200|2375"`
+      ], note:'Redis 6379 / Mongo 27017 / ES 9200 / Docker 2375 暴露公网，是最常见的挖矿入口。'}
+    ],
+    confirm:[
+      '/proc/<pid>/exe 指向 (deleted)，或位于 /tmp、/dev/shm 等可写目录',
+      'crontab / systemd 中存在下载后执行的命令（curl|bash、wget+chmod）',
+      '/etc/ld.so.preload 非空（说明系统命令可能被劫持）',
+      '存在指向矿池端口/域名的外连'
+    ],
+    stop:[
+      '拔网线或 ip link set eth0 down，<b>不要关机</b>',
+      '文件已删除时先 cp /proc/<pid>/exe /tmp/sample-<pid> 取证，再 kill——这是唯一拿到样本的机会',
+      '保存 ss -antp、ps -ef、crontab -l 的输出',
+      '修改 root 及所有 sudo 用户口令，检查 ~/.ssh/authorized_keys 是否被加公钥'
+    ],
+    clean:[
+      'kill 进程 → 删文件 → 清 crontab / systemd / ld.so.preload',
+      '修入口：Redis 加密码并绑定 127.0.0.1、SSH 禁 root 直连、关掉不用的端口',
+      '检查 /etc/passwd 是否新增 UID=0 账号、检查 ~/.ssh/authorized_keys',
+      '观察 24 小时，确认 cron 中没有残留'
+    ],
+    harden:[
+      'Redis / Mongo / ES / Docker API 一律不暴露公网',
+      'SSH 改密钥登录 + fail2ban，禁用密码登录',
+      '部署 HIDS（osquery / 青藤 / 牧云），监控 /tmp 执行与 crontab 变更',
+      '定期 rpm -Va 或 debsums 校验系统文件完整性'
+    ]
+  }
+},
+{
+  id:'ransom', icon:'🔒', name:'勒索病毒', level:'高危',
+  brief:'文件被批量加密并留勒索信。核心是"止损 + 保全证据 + 判断备份是否可用"，不是急着杀毒。',
+  win:{
+    signs:[
+      '文件扩展名被批量改成 .locked / .encrypted / .xxx，文件名变成乱码',
+      '每个目录出现勒索信：README.txt / HOW_TO_DECRYPT.html / RECOVER_FILES',
+      '桌面壁纸被替换成勒索页面；卷影副本被删除（vssadmin delete shadows）',
+      '映射的网络驱动器、共享盘同样被加密（横向加密）'
+    ],
+    steps:[
+      {t:'确认加密范围与勒索信', cmds:[
+        R`Get-ChildItem C:\ -Include *README*,*DECRYPT*,*RECOVER*,*HOW_TO* -Recurse -ErrorAction SilentlyContinue | Select-Object FullName,LastWriteTime -First 30`,
+        R`Get-ChildItem C:\Users -Recurse -ErrorAction SilentlyContinue | Group-Object Extension | Sort-Object Count -Descending | Select-Object -First 12 Name,Count`
+      ], note:''},
+      {t:'确认卷影和备份是否被破坏', cmds:[
+        R`vssadmin list shadows`,
+        R`Get-CimInstance Win32_ShadowCopy | Select-Object InstallDate,VolumeName`,
+        R`wbadmin get versions`
+      ], note:'卷影被删是勒索的标准动作，恢复时不能指望系统还原点。'},
+      {t:'从进程创建日志找加密动作', cmds:[
+        R`wevtutil qe Security /q:"*[System[(EventID=4688)]]" /f:text /c:200 | findstr /i "vssadmin bcdedit wbadmin cipher"`,
+        R`Get-WinEvent -FilterHashtable @{LogName='Security';Id=4688} -MaxEvents 200 | Select-Object TimeCreated,Message`
+      ], note:'勒索执行前几乎都会先删卷影、关恢复，这几条命令会留在 4688 里。'},
+      {t:'定位入口（怎么进来的）', cmds:[
+        R`Get-WinEvent -FilterHashtable @{LogName='Security';Id=4625} -MaxEvents 100 | Select-Object TimeCreated,Message`,
+        R`netstat -ano | findstr :3389`,
+        R`Get-WinEvent -FilterHashtable @{LogName='System';Id=7045} -MaxEvents 40 | Select-Object TimeCreated,Message`
+      ], note:'RDP 爆破、暴露的 445（MS17-010）、钓鱼附件是三大入口。'},
+      {t:'判断是否横向到其他主机', cmds:[
+        R`netstat -anob | findstr ":445"`,
+        R`Get-SmbSession | Select-Object ClientComputerName,ClientUserName`,
+        R`Get-SmbOpenFile | Select-Object ClientUserName,Path`
+      ], note:''}
+    ],
+    confirm:[
+      '大量文件被改名 + 存在勒索信，基本可以定性',
+      '卷影被删除、备份服务被停（4688 中出现 vssadmin / wbadmin）',
+      '样本哈希可在 ID Ransomware / No More Ransom 匹配到家族'
+    ],
+    stop:[
+      '<b>立即断网</b>（拔网线/禁用网卡），阻断横向加密',
+      '<b>不要关机</b>——内存里可能还有密钥和进程线索；除非要保全磁盘再做镜像',
+      '立刻下线共享目录，禁用被感染主机的域账号',
+      '检查离线备份是否也被挂载并加密（勒索会加密一切可写路径）',
+      '<b>不要支付赎金</b>，付款不保证解密且会引来二次勒索'
+    ],
+    clean:[
+      '先取证（内存镜像 + 磁盘镜像）再动手',
+      '用干净镜像重装，不要在染毒系统上"杀毒后继续用"',
+      '从离线/不可变备份恢复，恢复前确认备份点早于加密时间',
+      '修补入口：RDP 弱口令、暴露的 445、未打 MS17-010',
+      '用 ID Ransomware 确认家族，看是否有公开解密工具'
+    ],
+    harden:[
+      '3-2-1 备份，至少一份离线或不可变（对象存储合规锁）',
+      'RDP 不对公网暴露，强口令 + MFA',
+      '关闭 SMBv1，限制 445 横向',
+      '最小权限，普通账号不能写共享根目录'
+    ]
+  },
+  linux:{
+    signs:[
+      '文件被批量改名/加密，出现勒索信',
+      'openssl enc / gpg 等加密进程异常运行',
+      '数据库文件、网站目录被加密，服务起不来'
+    ],
+    steps:[
+      {t:'找勒索信与最近被改的文件', cmds:[
+        R`find / -xdev -mtime -1 -type f 2>/dev/null | head -50`,
+        R`find / -xdev \( -name "*README*" -o -name "*DECRYPT*" -o -name "*RECOVER*" \) -type f 2>/dev/null | head -20`
+      ], note:''},
+      {t:'看是否有加密进程在跑', cmds:[
+        R`ps aux | grep -Ei "openssl|gpg|encrypt|ransom" | grep -v grep`
+      ], note:''},
+      {t:'查入口：SSH 爆破 / Web 漏洞', cmds:[
+        R`grep -a "Failed password" /var/log/auth.log /var/log/secure 2>/dev/null | tail -30`,
+        R`last -a | head -30`
+      ], note:''},
+      {t:'检查挂载的备份/NFS 是否被一起加密', cmds:[
+        R`mount | grep -E "nfs|cifs"`,
+        R`df -h`
+      ], note:''}
+    ],
+    confirm:['文件批量改名 + 勒索信','存在加密进程或加密后的文件头特征','挂载的备份同样被加密'],
+    stop:['断网','<b>卸载</b>备份挂载（umount），避免继续被加密','停掉 SMB/NFS 服务','保留现场，不要急着重装'],
+    clean:['重新安装或回滚快照','从离线备份恢复','修补 SSH 弱口令、Web 上传/包含漏洞'],
+    harden:['备份离线存放，或挂载为只读','SSH 密钥登录，禁用密码','开启 SELinux/AppArmor']
+  }
+},
+{
+  id:'silverfox', icon:'🦊', name:'银狐木马', level:'高危',
+  brief:'国内高发的远控+窃密木马，靠钓鱼和仿冒软件传播。典型手法是"白加黑"：合法签名的 exe 加载同目录的恶意 DLL。',
+  win:{
+    signs:[
+      '点过"税务稽查名单.exe""微信电脑版安装包"之类的文件后中招',
+      '远控 + 窃密（浏览器保存的密码、微信/QQ 聊天记录）',
+      '蠕虫式传播：自动给微信/QQ 好友发文件',
+      '持久化几乎必用计划任务、启动项、服务',
+      '进程名像系统进程，路径却在 C:\\Users\\Public、%APPDATA%、C:\\ProgramData',
+      '用 mshta / rundll32 / regsvr32 拉起（无文件落地）'
+    ],
+    steps:[
+      {t:'查启动项（银狐最爱）', cmds:[
+        R`Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User`,
+        R`reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /s`,
+        R`reg query "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /s`,
+        R`Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\Startup"`
+      ], note:''},
+      {t:'查计划任务（常伪装成 Update / Edge / Security 任务）', cmds:[
+        R`Get-ScheduledTask | Where-Object {$_.Actions.Execute -notmatch 'C:\\Windows'} | Select-Object TaskName,TaskPath,State,@{n='Exe';e={$_.Actions.Execute}},@{n='Arg';e={$_.Actions.Arguments}}`,
+        R`schtasks /query /fo LIST /v | findstr /i "TaskName Task" `
+      ], note:''},
+      {t:'白加黑排查：找可执行目录里的可疑 DLL', cmds:[
+        R`Get-ChildItem "C:\Program Files","C:\Program Files (x86)","$env:LOCALAPPDATA","$env:APPDATA","C:\ProgramData" -Include version.dll,winmm.dll,wsock32.dll,dbghelp.dll,lpapi.dll,msimg32.dll -Recurse -ErrorAction SilentlyContinue | Select-Object FullName,Length,LastWriteTime`,
+        R`Get-AuthenticodeSignature "<可疑dll路径>" | Select-Object Status,SignerCertificate`
+      ], note:'<b>合法目录里出现无签名/签名无效的同名 DLL，就是白加黑的典型特征。</b>exe 本身签名正常，只有 DLL 有问题。'},
+      {t:'看进程加载了哪些非系统模块', cmds:[
+        R`Get-Process | Where-Object {$_.Path} | Select-Object Id,ProcessName,Path | Where-Object {$_.Path -notmatch 'C:\\Windows'}`
+      ], note:'更细的模块级排查要用 Process Explorer 或火绒剑，看每个进程加载的无签名模块。'},
+      {t:'查外联', cmds:[
+        R`Get-NetTCPConnection -State Established | Where-Object {$_.RemoteAddress -notmatch '^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|127\.)'} | Select-Object RemoteAddress,RemotePort,OwningProcess`,
+        R`netstat -anob | findstr ESTABLISHED`
+      ], note:''},
+      {t:'查凭据窃取痕迹', cmds:[
+        R`Get-ChildItem "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Login Data","$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Login Data" -ErrorAction SilentlyContinue | Select-Object FullName,LastAccessTime`
+      ], note:'浏览器密码库被读取的时间点，往往和木马首次运行时间吻合。'},
+      {t:'查落地与传播痕迹', cmds:[
+        R`Get-ChildItem "C:\Users\Public",$env:TEMP,$env:APPDATA -Recurse -Include *.exe,*.dll,*.lnk -ErrorAction SilentlyContinue | Where-Object {$_.LastWriteTime -gt (Get-Date).AddDays(-15)} | Select-Object FullName,LastWriteTime`
+      ], note:''}
+    ],
+    confirm:[
+      '无签名 DLL 被合法程序加载（白加黑）+ 同目录 exe 签名正常',
+      '计划任务/启动项指向 C:\\Users\\Public、%APPDATA% 等目录',
+      '存在境外或 IDC 地址的周期性外连',
+      '有微信/QQ 自动向外发送文件的记录（确认蠕虫行为）'
+    ],
+    stop:[
+      '断网——银狐会外传数据并横向，优先级最高',
+      '先导出计划任务、启动项、进程列表作为证据，不要立刻删',
+      '立刻修改所有账号口令（<b>包括浏览器里保存的</b>），开启二次验证',
+      '通知通讯录联系人：可能已收到冒充你发送的钓鱼文件'
+    ],
+    clean:[
+      '先「禁用」计划任务/服务/启动项 → 结束进程 → 最后删文件',
+      '清理白加黑目录里的恶意 DLL，注意保留原程序',
+      '全盘查杀后复查启动项（银狐常有多套持久化互相守护）',
+      '检查同网段其他主机是否已被横向'
+    ],
+    harden:[
+      '禁用 mshta/hta/regsvr32 的网络执行（AppLocker/WDAC 或 EDR 规则）',
+      '邮件网关拦截压缩包内的 exe/lnk',
+      '终端管控：禁止从 %APPDATA%、%TEMP% 执行',
+      '员工意识：不点"名单/发票/工资表.exe"'
+    ]
+  },
+  linux:{
+    signs:['（银狐主要针对 Windows，Linux 侧较少见）','Linux 上对应的远控多为 SSH 后门、挖矿、僵尸网络'],
+    steps:[
+      {t:'按通用基线排查账号与 SSH 后门', cmds:[
+        R`awk -F: '$3==0{print}' /etc/passwd`,
+        R`find / -xdev -name authorized_keys -exec ls -l {} \; -exec cat {} \; 2>/dev/null`
+      ], note:''}
+    ],
+    confirm:['发现新增 UID=0 账号或陌生 authorized_keys'],
+    stop:['断网，保留现场'],
+    clean:['删除后门账号与公钥，修改口令'],
+    harden:['SSH 密钥管理 + 登录审计']
+  }
+},
+{
+  id:'webshell', icon:'🕸', name:'WebShell', level:'高危',
+  brief:'网站目录里多出一个能执行命令的文件。重点是从访问日志倒推谁传的、传了几个。',
+  win:{
+    signs:[
+      'C:\\inetpub\\wwwroot 下出现陌生的 .asp/.aspx 文件',
+      '文件内容含 WScript.Shell、Server.CreateObject、Request.Item',
+      'IIS 日志里对该文件有 POST 且返回 200'
+    ],
+    steps:[
+      {t:'按修改时间找新增脚本', cmds:[
+        R`forfiles /P C:\inetpub\wwwroot /S /D +2026/01/01 /C "cmd /c echo @path @fdate @ftime"`,
+        R`Get-ChildItem C:\inetpub\wwwroot -Recurse -Include *.asp,*.aspx,*.ashx | Sort-Object LastWriteTime -Descending | Select-Object -First 30 FullName,LastWriteTime`
+      ], note:''},
+      {t:'特征匹配', cmds:[
+        R`findstr /s /i /m "WScript.Shell Server.CreateObject eval Request.Item ExecuteGlobal" C:\inetpub\wwwroot\*.asp*`
+      ], note:''},
+      {t:'查 IIS 日志里的上传与访问', cmds:[
+        R`Get-ChildItem C:\inetpub\logs\LogFiles -Recurse -Filter *.log | Sort-Object LastWriteTime -Descending | Select-Object -First 5 FullName`,
+        R`Select-String -Path "C:\inetpub\logs\LogFiles\W3SVC1\*.log" -Pattern "POST" | Select-Object -Last 40`
+      ], note:''}
+    ],
+    confirm:['脚本文件包含可被请求参数控制的执行函数','日志显示对该文件的 POST 返回 200'],
+    stop:['备份文件并计算哈希后再下线','阻断来源 IP','修改数据库与后台口令'],
+    clean:['删除 webshell，修补上传点','用干净版本覆盖被篡改文件','复查数据库是否被写入黑链/后门账号'],
+    harden:['上传白名单 + 重命名','禁用危险组件与执行权限','WAF + 目录不可执行']
+  },
+  linux:{
+    signs:[
+      '网站目录出现陌生 php/jsp 文件，时间戳与业务发布不符',
+      '内容含 eval / assert / base64_decode / system / $_POST[...]',
+      'access.log 里有对该文件的 POST 且返回 200',
+      '上传目录出现 .php.jpg、.php%00.jpg 之类绕过命名'
+    ],
+    steps:[
+      {t:'按时间找新增脚本', cmds:[
+        R`find /var/www /home -type f \( -name "*.php" -o -name "*.jsp" -o -name "*.jspx" \) -newermt "2026-01-01" -ls 2>/dev/null | head -50`
+      ], note:''},
+      {t:'特征匹配（一句话/大马）', cmds:[
+        R`grep -rnaE "eval\(|assert\(|base64_decode\(|gzinflate\(|str_rot13\(|create_function\(|preg_replace\(.*/e|system\(|exec\(|shell_exec\(|passthru\(|popen\(|proc_open\(" /var/www --include=*.php 2>/dev/null | head -40`
+      ], note:''},
+      {t:'找"参数直连执行"的一句话', cmds:[
+        R`grep -rna '\$_\(POST\|GET\|REQUEST\|COOKIE\)\[' /var/www --include=*.php 2>/dev/null | grep -iE "eval|assert|system|exec" | head -20`
+      ], note:''},
+      {t:'查可疑权限与隐藏文件', cmds:[
+        R`find /var/www -type f -perm -002 -ls 2>/dev/null | head`,
+        R`find /var/www -name ".*" -type f -ls 2>/dev/null | head`
+      ], note:''},
+      {t:'从访问日志倒推', cmds:[
+        R`grep -aiE "POST .*\.(php|jsp|aspx)" /var/log/nginx/access.log 2>/dev/null | awk '$9==200' | tail -50`,
+        R`grep -ai "union\|select\|cmd=\|eval(" /var/log/nginx/access.log 2>/dev/null | tail -30`
+      ], note:'日志格式不同字段位置会变，awk 的 $9 是状态码，按实际格式调整。'},
+      {t:'查上传点与中间件日志', cmds:[
+        R`ls -lt /var/www/html/uploads 2>/dev/null | head`,
+        R`grep -ai "multipart/form-data" /var/log/nginx/access.log 2>/dev/null | tail -20`
+      ], note:''}
+    ],
+    confirm:[
+      '文件中存在可由请求参数控制的执行函数（eval/assert/system）',
+      '访问日志对该文件的 POST 返回 200，且 UA 异常或来源集中',
+      '文件创建时间与业务发布窗口不符'
+    ],
+    stop:[
+      '先备份文件 + sha256sum 计算哈希，再下线页面或切维护页',
+      '临时封禁来源 IP（iptables / 安全组）',
+      '修改数据库、后台、FTP/SSH 全部口令'
+    ],
+    clean:[
+      '删除 webshell，修补上传/包含漏洞',
+      '用干净版本覆盖被篡改文件（rpm -Va / git status / 备份比对）',
+      '全文再扫一遍，webshell 通常不止一个（尤其 upload 目录）',
+      '检查数据库是否被写入黑链或管理员账号'
+    ],
+    harden:[
+      '上传白名单 + 重命名 + 存到非 web 目录',
+      'disable_functions 禁用 system/exec/eval 等',
+      'WAF + 上传目录禁止执行（php_flag engine off）',
+      'web 服务最小权限运行，定期文件完整性比对'
+    ]
+  }
+},
+{
+  id:'c2', icon:'📡', name:'异常外联 / C2', level:'中高危',
+  brief:'主机主动连外网的可疑地址。关键是判断"连到哪、哪个进程、什么周期"，而不是只看端口。',
+  win:{
+    signs:[
+      '与境外或 IDC 地址存在周期性连接，流量不大但持续',
+      '非业务端口出站（4444/8443/53/8080/1080）',
+      'DNS 大量异常查询（DGA 域名、超长随机字符串）',
+      '进程无签名、路径在用户可写目录'
+    ],
+    steps:[
+      {t:'看当前连接与对应进程', cmds:[
+        R`Get-NetTCPConnection -State Established | Select-Object LocalAddress,LocalPort,RemoteAddress,RemotePort,OwningProcess | Sort-Object RemotePort`,
+        R`netstat -anob | findstr ESTABLISHED`,
+        R`Get-Process -Id <PID> | Select-Object Id,ProcessName,Path,Company`
+      ], note:''},
+      {t:'判断目标是否为可疑基础设施', cmds:[
+        R`Resolve-DnsName <域名>`,
+        R`nslookup <域名> 8.8.8.8`
+      ], note:'目标落在 IDC/云厂商/VPS 段、域名注册时间新、无备案——优先怀疑。'},
+      {t:'看 DNS 缓存', cmds:[
+        R`ipconfig /displaydns | findstr /i "Record Name"`
+      ], note:''},
+      {t:'抓包确认心跳周期', cmds:[
+        R`pktmon start --capture --pkt-size 128`
+      ], note:'心跳固定间隔（比如每 60 秒一次）是远控的典型特征。'},
+      {t:'查该进程的持久化与来源', cmds:[
+        R`Get-CimInstance Win32_Process -Filter "ProcessId=<PID>" | Select-Object ProcessId,ParentProcessId,CommandLine,CreationDate`,
+        R`Get-Item "<进程路径>" | Select-Object FullName,Length,CreationTime,LastWriteTime`
+      ], note:''}
+    ],
+    confirm:[
+      '目标为境外 VPS/IDC、心跳周期固定、端口非业务',
+      '进程无签名或路径异常，且与启动项/计划任务关联',
+      '威胁情报平台命中恶意或"未知但可疑"'
+    ],
+    stop:[
+      '防火墙先封目的 IP/域名，<b>先封不杀进程</b>——便于观察是否切换备用域名',
+      'DNS sinkhole 到内网黑洞地址',
+      '隔离主机，限制出站'
+    ],
+    clean:['定位外联源头进程（多为 webshell 派生、挖矿、远控），按对应场景清理','删除持久化'],
+    harden:['出站白名单','DNS 日志留存与告警','EDR 网络行为检测']
+  },
+  linux:{
+    signs:['主机连接陌生境外地址','ss/lsof 里看到非常规端口出站','DNS 查询异常密集'],
+    steps:[
+      {t:'看连接与进程', cmds:[
+        R`ss -antp state established`,
+        R`ss -tunp`,
+        R`lsof -i -P -n | grep ESTABLISHED`
+      ], note:''},
+      {t:'定位到具体进程', cmds:[
+        R`ps -o pid,ppid,user,cmd -p <PID>`,
+        R`ls -l /proc/<PID>/exe`
+      ], note:''},
+      {t:'抓包确认', cmds:[
+        R`tcpdump -i any -nn host <目标IP> -c 50`
+      ], note:''}
+    ],
+    confirm:['目标为境外 VPS、心跳固定','进程路径异常或已被删除','情报命中'],
+    stop:['iptables 封禁目的地址','隔离主机'],
+    clean:['按源头场景清理（webshell/挖矿/后门）'],
+    harden:['出站白名单','部署 HIDS']
+  }
+},
+{
+  id:'blacklink', icon:'🔗', name:'黑链 / 暗链', level:'中危',
+  brief:'网站被注入隐藏外链做 SEO 推广。核心是"双 UA 对比"确认 cloaking，再倒查后门。',
+  win:{
+    signs:['（黑链主要发生在 Linux + Nginx/Apache 网站，Windows IIS 站点偶发）'],
+    steps:[
+      {t:'IIS 站点同样先做双 UA 对比', cmds:[
+        R`curl.exe -s -A "Baiduspider" http://目标/ -o baidu.html`,
+        R`curl.exe -s -A "Mozilla/5.0" http://目标/ -o normal.html`,
+        R`fc baidu.html normal.html`
+      ], note:'Windows 10 以上自带 curl.exe。'}
+    ],
+    confirm:['不同 UA 返回内容不一致','源码里存在隐藏样式的外链'],
+    stop:['先停 cloaking 规则','下线被注入页面'],
+    clean:['恢复模板、清数据库外链、删后门'],
+    harden:['文件完整性监控','后台强口令']
+  },
+  linux:{
+    signs:[
+      '首页源码被注入隐藏外链（博彩/色情/医疗），肉眼看不见',
+      '用了 display:none、left:-9999px、visibility:hidden、text-indent 负值',
+      '只在搜索引擎 UA 下返回（cloaking），普通浏览器看不到',
+      '搜索结果标题被改，site: 查询出现异常页面'
+    ],
+    steps:[
+      {t:'双 UA 对比（最快确认 cloaking）', cmds:[
+        R`curl -s -A "Baiduspider" http://目标/ -o /tmp/baidu.html`,
+        R`curl -s -A "Mozilla/5.0" http://目标/ -o /tmp/normal.html`,
+        R`diff /tmp/normal.html /tmp/baidu.html | head -50`
+      ], note:'两个文件不一样，就说明存在 UA 判断（cloaking）。这是黑链最核心的判定方法。'},
+      {t:'源码里搜隐藏外链', cmds:[
+        R`grep -rnaE "display:\s*none|left:\s*-9999|visibility:\s*hidden|text-indent:\s*-" /var/www --include=*.php --include=*.html 2>/dev/null | head -30`
+      ], note:''},
+      {t:'查 cloaking 规则藏在哪', cmds:[
+        R`grep -rn "Baiduspider\|Googlebot\|User-Agent" /etc/nginx /etc/httpd /var/www/.htaccess 2>/dev/null | head -20`
+      ], note:''},
+      {t:'查数据库被写入的外链', cmds:[
+        R`mysql -uroot -p -e "select option_name,left(option_value,300) from wp_options where option_value like '%<a %';" 库名`,
+        R`mysql -uroot -p -e "select ID,post_title from wp_posts where post_content like '%display:none%';" 库名`
+      ], note:'WordPress 站点最常见的是 wp_options / wp_posts 被改写。表前缀可能不是 wp_。'},
+      {t:'查定时重注入脚本', cmds:[
+        R`crontab -l; ls -l /etc/cron.d/; cat /etc/cron.d/* 2>/dev/null`
+      ], note:'黑链常配一个 cron 定时把外链写回去，不删它，清完还会回来。'},
+      {t:'必定伴随后门，按 webshell 再扫一遍', cmds:[
+        R`grep -rnaE "eval\(|assert\(|base64_decode\(|system\(" /var/www --include=*.php 2>/dev/null | head -30`
+      ], note:''}
+    ],
+    confirm:[
+      '不同 UA 返回内容不一致（cloaking 实锤）',
+      '源码中存在隐藏样式的外链',
+      '数据库中被插入外链记录或恶意脚本'
+    ],
+    stop:[
+      '先停掉 cloaking（恢复模板、删 .htaccess 规则），网站先恢复正常展示',
+      '清理外链后向搜索引擎提交死链/快照更新',
+      '保留被篡改文件副本作为证据'
+    ],
+    clean:[
+      '用备份或官方包覆盖被改文件',
+      '清理数据库中的外链记录',
+      '删除后门 webshell，改所有后台与数据库口令'
+    ],
+    harden:[
+      '模板与核心文件完整性监控',
+      '后台强口令 + MFA，限制 /wp-admin 访问来源',
+      'CMS 与插件及时更新，删除不用的插件'
+    ]
+  }
+}
+];
+
+/* ============ 通用基线 ============ */
+var BASE = {
+win:[
+ {g:'账号', items:[
+   {t:'本地用户与管理员组', cmds:[
+     R`Get-LocalUser | Select-Object Name,Enabled,LastLogon,Description`,
+     R`net localgroup administrators`,
+     R`wmic useraccount get Name,SID,Status,Disabled`
+   ], hint:'注意 Enabled 但从未登录、描述为空、名字像系统账号的账户。'},
+   {t:'隐藏账户（注册表留痕）', cmds:[
+     R`Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList' | ForEach-Object { $_.PSChildName + '  ' + (Get-ItemProperty $_.PSPath).ProfileImagePath }`
+   ], hint:'net user 看不到但 ProfileList 有记录的，就是隐藏账户。'}
+ ]},
+ {g:'服务与驱动', items:[
+   {t:'非系统路径服务', cmds:[
+     R`Get-CimInstance Win32_Service | Where-Object {$_.PathName -notmatch 'C:\\Windows'} | Select-Object Name,DisplayName,State,StartMode,StartName,PathName`
+   ], hint:'路径在 ProgramData / Users / Temp 的服务要重点看。'},
+   {t:'内核驱动', cmds:[
+     R`Get-CimInstance Win32_SystemDriver | Select-Object Name,State,StartMode,PathName | Sort-Object PathName`
+   ], hint:''}
+ ]},
+ {g:'计划任务', items:[
+   {t:'非微软计划任务', cmds:[
+     R`Get-ScheduledTask | Where-Object {$_.TaskPath -notmatch '^\\Microsoft'} | Select-Object TaskName,TaskPath,State,@{n='Exe';e={$_.Actions.Execute}},@{n='Arg';e={$_.Actions.Arguments}}`
+   ], hint:'重点看执行体在 Temp/AppData/Public 的。'}
+ ]},
+ {g:'启动项与注册表', items:[
+   {t:'启动项', cmds:[
+     R`Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User`
+   ], hint:''},
+   {t:'Run / RunOnce', cmds:[
+     R`reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /s`,
+     R`reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" /s`
+   ], hint:''},
+   {t:'Winlogon 与 AppInit', cmds:[
+     R`Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon' | Select-Object Shell,Userinit`,
+     R`Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows' | Select-Object AppInit_DLLs,LoadAppInit_DLLs`
+   ], hint:'Userinit 正常是 C:\\Windows\\system32\\userinit.exe, 后面多出东西就是被改。'},
+   {t:'IFEO 劫持', cmds:[
+     R`Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options' | ForEach-Object { $d=(Get-ItemProperty $_.PSPath).Debugger; if($d){ "{0} -> {1}" -f $_.PSChildName,$d } }`
+   ], hint:'IFEO 有 Debugger 值 = 程序被劫持到别的可执行文件。'},
+   {t:'WMI 事件订阅（无文件后门）', cmds:[
+     R`Get-WmiObject -Namespace root\Subscription -Class __EventFilter`,
+     R`Get-WmiObject -Namespace root\Subscription -Class CommandLineEventConsumer`
+   ], hint:'正常基本为空。'}
+ ]},
+ {g:'网络与进程', items:[
+   {t:'连接与监听', cmds:[
+     R`Get-NetTCPConnection -State Established | Select-Object LocalPort,RemoteAddress,RemotePort,OwningProcess`,
+     R`Get-NetTCPConnection -State Listen | Select-Object LocalAddress,LocalPort,OwningProcess`
+   ], hint:''},
+   {t:'无签名进程', cmds:[
+     R`Get-Process | Where-Object {$_.Path} | ForEach-Object { $s=Get-AuthenticodeSignature $_.Path; if($s.Status -ne 'Valid'){ "{0}  {1}  {2}  {3}" -f $_.Id,$_.ProcessName,$s.Status,$_.Path } }`
+   ], hint:''}
+ ]},
+ {g:'日志', items:[
+   {t:'登录与提权事件', cmds:[
+     R`Get-WinEvent -FilterHashtable @{LogName='Security';Id=4625} -MaxEvents 50 | Select-Object TimeCreated,Message`,
+     R`Get-WinEvent -FilterHashtable @{LogName='Security';Id=4672} -MaxEvents 30 | Select-Object TimeCreated,Message`
+   ], hint:'4625 失败登录看爆破源；4672 是分配了特殊权限的登录。'},
+   {t:'服务安装事件 7045', cmds:[
+     R`Get-WinEvent -FilterHashtable @{LogName='System';Id=7045} -MaxEvents 40 | Select-Object TimeCreated,Message`
+   ], hint:'7045 记录了每一次服务安装，是挖矿/后门服务的追溯入口。'}
+ ]}
+],
+linux:[
+ {g:'账号与权限', items:[
+   {t:'UID=0 账号与可登录账号', cmds:[
+     R`awk -F: '$3==0{print}' /etc/passwd`,
+     R`awk -F: '$7 ~ /(sh|bash|zsh)$/{print}' /etc/passwd`
+   ], hint:'除 root 外出现 UID=0 的一律是后门。'},
+   {t:'sudo 权限', cmds:[
+     R`cat /etc/sudoers; ls -la /etc/sudoers.d/; cat /etc/sudoers.d/* 2>/dev/null`
+   ], hint:''},
+   {t:'SSH 公钥后门', cmds:[
+     R`find / -xdev -name authorized_keys -exec ls -l {} \; -exec cat {} \; 2>/dev/null`
+   ], hint:'最容易被忽略的持久化方式之一。'}
+ ]},
+ {g:'登录记录', items:[
+   {t:'登录历史与爆破', cmds:[
+     R`last -a | head -30`,
+     R`lastb 2>/dev/null | head -20`,
+     R`grep -a "Accepted password" /var/log/auth.log /var/log/secure 2>/dev/null | tail -30`
+   ], hint:''}
+ ]},
+ {g:'进程与网络', items:[
+   {t:'进程树与高危进程', cmds:[
+     R`ps -ef --forest`,
+     R`ps aux --sort=-%cpu | head -15`
+   ], hint:''},
+   {t:'已删除仍在运行的进程', cmds:[
+     R`ls -l /proc/*/exe 2>/dev/null | grep -i deleted`
+   ], hint:'文件被删了进程还在——挖矿和临时木马的典型。'},
+   {t:'连接与监听', cmds:[
+     R`ss -antp state established`,
+     R`ss -lntup`
+   ], hint:''}
+ ]},
+ {g:'服务与定时任务', items:[
+   {t:'systemd 服务', cmds:[
+     R`systemctl list-units --type=service --state=running`,
+     R`ls -lt /etc/systemd/system/*.service | head -20`
+   ], hint:'按修改时间排，最近新增的 unit 最可疑。'},
+   {t:'crontab 全家桶', cmds:[
+     R`crontab -l; cat /etc/crontab; ls -l /etc/cron.d/ /etc/cron.hourly/`,
+     R`for u in $(cut -f1 -d: /etc/passwd); do echo "== $u"; crontab -l -u $u 2>/dev/null; done`
+   ], hint:'每个用户都要看，不只是 root。'}
+ ]},
+ {g:'内核与预加载', items:[
+   {t:'动态库预加载（重点）', cmds:[
+     R`cat /etc/ld.so.preload`
+   ], hint:'非空 = 系统命令可能被劫持，此时 ps/netstat/ls 的结果都不可信。'},
+   {t:'内核模块', cmds:[
+     R`lsmod`
+   ], hint:''}
+ ]},
+ {g:'文件与权限', items:[
+   {t:'SUID 与可写目录', cmds:[
+     R`find / -xdev -perm -4000 -type f -ls 2>/dev/null | head -40`,
+     R`find /tmp /var/tmp /dev/shm -type f -perm -u+x -ls 2>/dev/null`
+   ], hint:''},
+   {t:'系统文件完整性', cmds:[
+     R`rpm -Va 2>/dev/null | head -40`,
+     R`debsums -c 2>/dev/null | head -40`
+   ], hint:'输出里被修改过的系统文件，可能是被替换的命令或后门。'}
+ ]}
+]
+};
+
+/* ============ 流程与工具 ============ */
+var PHASES = [
+ {n:'接警与准备', time:'10 分钟',
+  desc:'先问清楚再上手，避免破坏现场。',
+  items:['确认现象、时间、影响范围（哪些主机、哪些业务）','确认是否已断网/重启——已重启会丢失内存证据','准备只读 U 盘、采集脚本、取证工具','记录当前时间作为时间线起点']},
+ {n:'隔离与止损', time:'尽快',
+  desc:'先止血，再排查。隔离不等于关机。',
+  items:['网络隔离（拔线/禁用网卡/安全组隔离），不要关机','停掉对外服务或切维护页','保留至少一台未处置的样本以便取证','通知业务方与负责人，约定沟通渠道（不要用可能被控的 IM）']},
+ {n:'取证与固定', time:'30 分钟',
+  desc:'证据链要能自证，否则报告站不住。',
+  items:['内存镜像（有条件就做）→ 磁盘镜像','采集系统信息、账号、服务、计划任务、网络连接','保留可疑文件并计算 SHA256','所有采集物记录时间、来源主机、采集人','原始日志不要覆盖，先复制出来']},
+ {n:'排查与定性', time:'1~3 小时',
+  desc:'按事件类型走对应场景，交叉验证。',
+  items:['按「场景排查」选定事件类型逐项过','用「通用基线」补全账号/服务/计划任务/启动项','威胁情报核对 IP、域名、样本哈希','确认入口（怎么进来的）和影响面（到哪一步了）','形成初步结论：确认存在 / 高度疑似 / 未发现']},
+ {n:'清除与恢复', time:'视规模',
+  desc:'清干净比清得快重要。',
+  items:['先禁用持久化项，再结束进程，最后删文件','修补入口漏洞，否则清了还会回来','从可信备份恢复业务','观察 24 小时，确认无复活','记录每一步操作与时间']},
+ {n:'加固与复盘', time:'当天',
+  desc:'同样的问题不该出现第二次。',
+  items:['按场景给加固建议，落到具体配置项','全网排查同版本、同漏洞的其它主机','补齐监控与告警（HIDS/EDR/日志）','复盘：为什么没早发现']},
+ {n:'报告与归档', time:'收尾',
+  desc:'报告是交付物，也是免责依据。',
+  items:['用「出具报告」生成，补齐影响范围与结论','附上采集包与哈希','证据文件单独归档，注明保存期限','向客户汇报并留签字/邮件确认']}
+];
+
+var TOOLS = {
+win:[
+ {name:'Sysinternals Suite', use:'Process Explorer 看进程模块、Autoruns 看全部自启项、TCPView 看连接', src:'learn.microsoft.com/sysinternals'},
+ {name:'火绒剑 / PC Hunter', use:'进程、模块、内核钩子、驱动级排查（查隐藏进程）', src:'官方下载'},
+ {name:'D盾 / 河马', use:'webshell 查杀（IIS 站点）', src:'官方下载'},
+ {name:'FTK Imager / DumpIt', use:'磁盘与内存镜像取证', src:'accessdata / Magnet'},
+ {name:'HashMyFiles', use:'批量计算哈希', src:'nirsoft.net'},
+ {name:'Everything', use:'按时间/大小快速定位落地文件', src:'voidtools.com'},
+ {name:'Wireshark / pktmon', use:'抓包确认外联与心跳', src:'wireshark.org（pktmon 系统自带）'}
+],
+linux:[
+ {name:'busybox', use:'系统命令被劫持时，用静态 busybox 做交叉验证', src:'busybox.net'},
+ {name:'rkhunter / chkrootkit', use:'rootkit 与后门扫描', src:'官方源'},
+ {name:'ClamAV', use:'病毒扫描（挖矿/木马样本）', src:'clamav.net'},
+ {name:'unhide', use:'查隐藏进程与端口', src:'官方源'},
+ {name:'lsof / strace', use:'进程打开的文件、系统调用追踪', src:'系统自带'},
+ {name:'tcpdump', use:'抓包', src:'系统自带'},
+ {name:'osquery', use:'把系统状态当数据库查询，适合批量排查', src:'osquery.io'}
+],
+common:[
+ {name:'威胁情报平台', use:'IP/域名/哈希信誉查询（微步、奇安信、VT）', src:'在线 / 需账号'},
+ {name:'沙箱', use:'样本行为分析（微步云沙箱、any.run）', src:'在线'},
+ {name:'只读 U 盘 + 取证工具盘', use:'现场采集，避免污染', src:'自备'},
+ {name:'时间同步工具', use:'保证多台主机日志时间线可比对', src:'系统自带'}
+]
+};
+
+/* =========================================================
+   界面逻辑
+   ========================================================= */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(m,err){
+  var t=$('toast'); t.textContent=m; t.className='toast on'+(err?' err':'');
+  clearTimeout(t._t); t._t=setTimeout(function(){ t.className='toast'; },2400);
+}
+
+var LS='csai_ir_state_v1';
+var ST={ scene:'miner', plat:'win', basePlat:'win', tab:'scene', checks:{}, form:{}, scriptTab:'ps' };
+
+function save(){
+  try{ localStorage.setItem(LS, JSON.stringify(ST)); }catch(e){}
+}
+function load(){
+  try{
+    var raw=localStorage.getItem(LS);
+    if(!raw) return;
+    var o=JSON.parse(raw);
+    if(o && typeof o==='object'){
+      ST.scene=o.scene||ST.scene; ST.plat=o.plat||ST.plat;
+      ST.basePlat=o.basePlat||ST.basePlat; ST.checks=o.checks||{};
+      ST.form=o.form||{}; ST.tab=o.tab||'scene'; ST.scriptTab=o.scriptTab||'ps';
+    }
+  }catch(e){}
+}
+
+function scene(){ return SCENES.filter(function(s){ return s.id===ST.scene; })[0] || SCENES[0]; }
+function ckKey(kind, idx){ return kind+'|'+ST.scene+'|'+ST.plat+'|'+idx; }
+
+/* ---------- 场景页 ---------- */
+function renderChips(){
+  $('chips').innerHTML = SCENES.map(function(s){
+    return '<div class="chip'+(s.id===ST.scene?' on':'')+'" data-id="'+s.id+'">'
+      + '<span class="ic">'+s.icon+'</span><span>'+esc(s.name)+'</span>'
+      + '<small>'+esc(s.level)+'</small></div>';
+  }).join('');
+  $('chips').querySelectorAll('.chip').forEach(function(el){
+    el.addEventListener('click', function(){
+      ST.scene=el.dataset.id; save(); renderChips(); renderScene();
+    });
+  });
+}
+
+function cmdBlock(text){
+  return '<div class="cmd"><pre>'+esc(text)+'</pre><button class="cp" data-cmd="'+esc(text)+'">复制</button></div>';
+}
+
+function renderScene(){
+  var s=scene(), p=(ST.plat==='win'?'win':'linux'), d=s[p];
+  if(!d){ d={signs:[],steps:[],confirm:[],stop:[],clean:[],harden:[]}; }
+  var h=[];
+  h.push('<div class="brief">'+esc(s.brief)+'</div>');
+
+  h.push('<div class="blk"><h3>现象特征 <span class="tag t-sign">先看像不像</span></h3><ul class="plain">'
+    + d.signs.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('') + '</ul></div>');
+
+  h.push('<div class="blk"><h3>排查步骤 <span class="tag t-conf">勾选后写进报告</span></h3>');
+  d.steps.forEach(function(st,i){
+    var k=ckKey('step',i), on=!!ST.checks[k];
+    h.push('<div class="step'+(on?' done':'')+'" data-k="'+k+'">'
+      + '<div class="step-h"><input type="checkbox" '+(on?'checked':'')+' data-k="'+k+'">'
+      + '<b>'+(i+1)+'. '+esc(st.t)+'</b></div>'
+      + (st.cmds||[]).map(cmdBlock).join('')
+      + (st.note? '<div class="tip">'+st.note+'</div>' : '')
+      + '</div>');
+  });
+  h.push('</div>');
+
+  function listBlock(title, tag, cls, arr){
+    if(!arr || !arr.length) return '';
+    return '<div class="blk"><h3>'+title+' <span class="tag '+cls+'">判定/处置</span></h3><ul class="plain">'
+      + arr.map(function(x){ return '<li>'+x+'</li>'; }).join('') + '</ul></div>';
+  }
+  h.push(listBlock('满足这些才叫「确认存在」','x','t-conf', d.confirm));
+  h.push(listBlock('止损建议（先做这些）','x','t-stop', d.stop));
+  h.push(listBlock('清除与修复','x','t-clean', d.clean));
+  h.push(listBlock('后续加固','x','t-harden', d.harden));
+
+  $('sceneBody').innerHTML = h.join('');
+
+  $('sceneBody').querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      ST.checks[cb.dataset.k]=cb.checked;
+      cb.closest('.step').classList.toggle('done', cb.checked);
+      save(); updProgress();
+    });
+  });
+  bindCopy($('sceneBody'));
+  updProgress();
+}
+
+/* ---------- 基线页 ---------- */
+function renderBase(){
+  var p=(ST.basePlat==='win'?'win':'linux'), groups=BASE[p];
+  var h=[];
+  groups.forEach(function(g,gi){
+    h.push('<div class="card"><h2><span class="n">'+esc(g.g)+'</span>'+esc(g.g)+'</h2>');
+    g.items.forEach(function(it,ii){
+      var k='base|'+p+'|'+gi+'|'+ii, on=!!ST.checks[k], id='base__'+p+'_'+gi+'_'+ii;
+      h.push('<div class="step'+(on?' done':'')+'" data-k="'+id+'">'
+        + '<div class="step-h"><input type="checkbox" '+(on?'checked':'')+' data-k="'+id+'">'
+        + '<b>'+esc(it.t)+'</b></div>'
+        + (it.cmds||[]).map(cmdBlock).join('')
+        + (it.hint? '<div class="tip">'+it.hint+'</div>':'')
+        + '</div>');
+    });
+    h.push('</div>');
+  });
+  $('baseBody').innerHTML = h.join('');
+
+  $('baseBody').querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', function(){
+      ST.checks[cb.dataset.k]=cb.checked;
+      cb.closest('.step').classList.toggle('done', cb.checked);
+      save();
+    });
+  });
+  bindCopy($('baseBody'));
+}
+
+/* ---------- 复制 ---------- */
+function bindCopy(root){
+  root.querySelectorAll('.cp').forEach(function(b){
+    b.addEventListener('click', function(){
+      var t=b.dataset.cmd;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(t).then(function(){ toast('已复制'); },
+          function(){ fallbackCopy(t); });
+      } else fallbackCopy(t);
+    });
+  });
+}
+function fallbackCopy(t){
+  var ta=document.createElement('textarea');
+  ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); toast('已复制'); }catch(e){ toast('复制失败，请手动选择',true); }
+  ta.remove();
+}
+
+/* ---------- 进度 ---------- */
+function updProgress(){
+  var s=scene(), p=(ST.plat==='win'?'win':'linux'), d=s[p]||{steps:[]};
+  var total=(d.steps||[]).length, done=0;
+  (d.steps||[]).forEach(function(_,i){ if(ST.checks[ckKey('step',i)]) done++; });
+  var pct=total? Math.round(done*100/total):0;
+  $('pgFill').style.width=pct+'%';
+  $('pgTxt').textContent=done+' / '+total;
+}
+
+/* ---------- 流程与工具 ---------- */
+function renderFlow(){
+  $('phases').innerHTML = PHASES.map(function(p,i){
+    return '<div class="phase"><div class="num">'+(i+1)+'</div><div class="body">'
+      + '<h4>'+esc(p.n)+' <span class="mini">· '+esc(p.time)+'</span></h4>'
+      + '<p>'+esc(p.desc)+'</p>'
+      + '<ul>'+p.items.map(function(x){ return '<li>'+esc(x)+'</li>'; }).join('')+'</ul>'
+      + '</div></div>';
+  }).join('');
+
+  var h=[];
+  function block(title, arr){
+    return '<h3 style="font-size:13px;margin:14px 0 8px;color:#c9d6e4">'+title+'</h3>'
+      + '<div class="tools">'+arr.map(function(t){
+        return '<div class="tool"><b>'+esc(t.name)+'</b><p>'+esc(t.use)+'</p>'
+          + '<div class="src">'+esc(t.src)+'</div></div>';
+      }).join('')+'</div>';
+  }
+  h.push(block('Windows', TOOLS.win));
+  h.push(block('Linux', TOOLS.linux));
+  h.push(block('通用', TOOLS.common));
+  $('tools').innerHTML = h.join('');
+}
+
+/* ---------- 脚本 ---------- */
+function scriptText(which){
+  return (which==='ps'? $('ps-script') : $('sh-script')).textContent.replace(/^\s*\n/,'');
+}
+function renderScript(){
+  $('scriptPre').textContent = scriptText(ST.scriptTab);
+  var t=scriptText(ST.scriptTab);
+  $('scriptMeta').textContent = t.split('\n').length + ' 行';
+  document.querySelectorAll('#s-script .plat button').forEach(function(b){
+    b.classList.toggle('on', b.dataset.p===ST.scriptTab);
+  });
+}
+function download(name, content, mime){
+  var blob=new Blob([content],{type:(mime||'text/plain')+';charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1200);
+}
+
+/* ---------- 报告 ---------- */
+function collectChecked(){
+  var out=[];
+  SCENES.forEach(function(s){
+    ['win','linux'].forEach(function(p){
+      var d=s[p]; if(!d || !d.steps) return;
+      d.steps.forEach(function(st,i){
+        if(ST.checks['step|'+s.id+'|'+p+'|'+i]){
+          out.push({scene:s.name, plat:p==='win'?'Windows':'Linux', step:st.t,
+                    cmds:st.cmds||[], note:st.note||''});
+        }
+      });
+    });
+  });
+  ['win','linux'].forEach(function(p){
+    (BASE[p]||[]).forEach(function(g,gi){
+      g.items.forEach(function(it,ii){
+        if(ST.checks['base|'+p+'|'+gi+'|'+ii]){
+          out.push({scene:'通用基线', plat:p==='win'?'Windows':'Linux', step:g.g+' / '+it.t,
+                    cmds:it.cmds||[], note:it.hint||''});
+        }
+      });
+    });
+  });
+  return out;
+}
+function repKpi(){
+  var c=collectChecked();
+  var byP={Windows:0,Linux:0};
+  c.forEach(function(x){ byP[x.plat]=(byP[x.plat]||0)+1; });
+  $('repKpi').innerHTML =
+    '<div class="k ok"><b>'+c.length+'</b><span>已勾选排查项</span></div>'
+    + '<div class="k"><b>'+byP.Windows+'</b><span>Windows 项</span></div>'
+    + '<div class="k"><b>'+byP.Linux+'</b><span>Linux 项</span></div>';
+}
+function formData(){
+  return {
+    client:$('f_client').value.trim(), sys:$('f_sys').value.trim(),
+    event:$('f_event').value.trim(), plat:$('f_plat').value.trim(),
+    time:$('f_time').value.trim(), who:$('f_who').value.trim(),
+    scope:$('f_scope').value.trim(), verdict:$('f_verdict').value,
+    action:$('f_action').value.trim(), harden:$('f_harden').value.trim()
+  };
+}
+function buildReportMd(){
+  var f=formData(), c=collectChecked();
+  var L=[];
+  L.push('# 应急响应报告');
+  L.push('');
+  L.push('| 项目 | 内容 |');
+  L.push('|---|---|');
+  L.push('| 客户/单位 | '+(f.client||'-')+' |');
+  L.push('| 系统/业务 | '+(f.sys||'-')+' |');
+  L.push('| 事件类型 | '+(f.event||'-')+' |');
+  L.push('| 受影响平台 | '+(f.plat||'-')+' |');
+  L.push('| 发现时间 | '+(f.time||'-')+' |');
+  L.push('| 处置人 | '+(f.who||'-')+' |');
+  L.push('| 定性结论 | **'+f.verdict+'** |');
+  L.push('');
+  L.push('## 一、事件概述');
+  L.push('');
+  L.push(f.scope || '（未填写）');
+  L.push('');
+  L.push('## 二、排查过程');
+  L.push('');
+  if(!c.length){ L.push('（未勾选排查项）'); }
+  else {
+    var last='';
+    c.forEach(function(x){
+      var head=x.scene+' · '+x.plat;
+      if(head!==last){ L.push('### '+head); L.push(''); last=head; }
+      L.push('- [x] '+x.step);
+      (x.cmds||[]).forEach(function(cmd){ L.push('  ```'); L.push('  '+cmd); L.push('  ```'); });
+    });
+  }
+  L.push('');
+  L.push('## 三、处置措施与结果');
+  L.push('');
+  L.push(f.action || '（未填写）');
+  L.push('');
+  L.push('## 四、加固建议与遗留风险');
+  L.push('');
+  L.push(f.harden || '（未填写）');
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push('本报告由「应急响应作战台」生成于 '+new Date().toLocaleString('zh-CN')+'。');
+  return L.join('\n');
+}
+function buildReportHtml(){
+  var f=formData(), c=collectChecked();
+  var H=[];
+  H.push('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>应急响应报告</title><style>');
+  H.push('body{font:13.5px/1.8 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:940px;margin:0 auto;padding:34px 26px;color:#1f2328}');
+  H.push('h1{font-size:23px;border-bottom:2px solid #1f2328;padding-bottom:10px;margin-bottom:6px}');
+  H.push('.sub{color:#6b7480;font-size:12px;margin-bottom:24px}');
+  H.push('h2{font-size:16px;margin-top:28px;border-left:4px solid #1f6fd0;padding-left:10px}');
+  H.push('h3{font-size:14px;margin-top:18px;color:#2c3540}');
+  H.push('table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12.5px}');
+  H.push('th,td{border:1px solid #d0d7de;padding:7px 11px;text-align:left;vertical-align:top}');
+  H.push('th{background:#f6f8fa;width:130px;color:#57606a;font-weight:600}');
+  H.push('pre{background:#f6f8fa;border:1px solid #e1e6eb;border-radius:5px;padding:9px 12px;');
+  H.push('font:12px/1.55 ui-monospace,Consolas,monospace;overflow-x:auto;white-space:pre-wrap;word-break:break-all;margin:6px 0 12px}');
+  H.push('ul{margin:6px 0 14px;padding-left:22px}li{margin:3px 0}');
+  H.push('.verdict{display:inline-block;background:#fff4e5;border:1px solid #f0c48a;color:#8a5300;');
+  H.push('padding:2px 10px;border-radius:4px;font-weight:600;font-size:13px}');
+  H.push('.empty{color:#8b949e}');
+  H.push('</style></head><body>');
+  H.push('<h1>应急响应报告</h1>');
+  H.push('<div class="sub">生成时间：'+new Date().toLocaleString('zh-CN')+'</div>');
+  H.push('<table>');
+  [['客户/单位',f.client],['系统/业务',f.sys],['事件类型',f.event],['受影响平台',f.plat],
+   ['发现时间',f.time],['处置人',f.who]].forEach(function(r){
+     H.push('<tr><th>'+r[0]+'</th><td>'+(r[1]?esc(r[1]):'<span class="empty">—</span>')+'</td></tr>');
+  });
+  H.push('<tr><th>定性结论</th><td><span class="verdict">'+esc(f.verdict)+'</span></td></tr>');
+  H.push('</table>');
+
+  H.push('<h2>一、事件概述</h2>');
+  H.push(f.scope? '<p>'+esc(f.scope)+'</p>' : '<p class="empty">（未填写）</p>');
+
+  H.push('<h2>二、排查过程</h2>');
+  if(!c.length) H.push('<p class="empty">（未勾选排查项）</p>');
+  else{
+    var last='';
+    c.forEach(function(x){
+      var head=x.scene+' · '+x.plat;
+      if(head!==last){ H.push('<h3>'+esc(head)+'</h3>'); last=head; }
+      H.push('<div><b>'+esc(x.step)+'</b></div>');
+      (x.cmds||[]).forEach(function(cmd){ H.push('<pre>'+esc(cmd)+'</pre>'); });
+    });
+  }
+
+  H.push('<h2>三、处置措施与结果</h2>');
+  H.push(f.action? '<p>'+esc(f.action).replace(/\n/g,'<br>')+'</p>' : '<p class="empty">（未填写）</p>');
+  H.push('<h2>四、加固建议与遗留风险</h2>');
+  H.push(f.harden? '<p>'+esc(f.harden).replace(/\n/g,'<br>')+'</p>' : '<p class="empty">（未填写）</p>');
+
+  H.push('<h2>五、附件</h2>');
+  H.push('<ul><li>现场采集包（IR-主机名-时间戳.zip / .tar.gz）及 SHA256</li>');
+  H.push('<li>可疑样本文件及哈希</li><li>相关系统与安全日志（按需附）</li></ul>');
+  H.push('</body></html>');
+  return H.join('\n');
+}
+function stamp(){
+  var d=new Date(), p=function(n){ return String(n).padStart(2,'0'); };
+  return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes());
+}
+
+/* ---------- 事件绑定 ---------- */
+document.querySelectorAll('nav button').forEach(function(b){
+  b.addEventListener('click', function(){
+    ST.tab=b.dataset.tab; save();
+    document.querySelectorAll('nav button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    ['scene','base','flow','script','report'].forEach(function(t){
+      $('s-'+t).classList.toggle('on', t===ST.tab);
+    });
+    if(ST.tab==='report') repKpi();
+  });
+});
+$('plat').addEventListener('click', function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  ST.plat=b.dataset.p; save();
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  renderScene();
+});
+$('plat2').addEventListener('click', function(e){
+  var b=e.target.closest('button'); if(!b) return;
+  ST.basePlat=b.dataset.p; save();
+  this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+  renderBase();
+});
+document.querySelectorAll('#s-script .plat button').forEach(function(b){
+  b.addEventListener('click', function(){ ST.scriptTab=b.dataset.p; save(); renderScript(); });
+});
+$('btnPs').addEventListener('click', function(){
+  /* 必须带 UTF-8 BOM：Windows PowerShell 5.1 会把无 BOM 的 UTF-8 当 GBK 读，
+     中文注释变乱码，甚至整段解析失败跑不起来 */
+  download('collect-ir.ps1', '\uFEFF' + scriptText('ps'), 'text/plain');
+  toast('已下载 collect-ir.ps1');
+});
+$('btnSh').addEventListener('click', function(){
+  download('collect-ir.sh', scriptText('sh'), 'text/plain');
+  toast('已下载 collect-ir.sh');
+});
+$('btnCopyPs').addEventListener('click', function(){
+  (navigator.clipboard? navigator.clipboard.writeText(scriptText('ps')) : null) || fallbackCopy(scriptText('ps'));
+  toast('PowerShell 脚本已复制');
+});
+$('btnCopySh').addEventListener('click', function(){
+  (navigator.clipboard? navigator.clipboard.writeText(scriptText('sh')) : null) || fallbackCopy(scriptText('sh'));
+  toast('Bash 脚本已复制');
+});
+$('btnReset').addEventListener('click', function(){
+  if(!confirm('清空所有勾选和报告表单？')) return;
+  ST.checks={}; ST.form={}; save();
+  ['f_client','f_sys','f_event','f_plat','f_time','f_who','f_scope','f_action','f_harden'].forEach(function(id){
+    $(id).value='';
+  });
+  $('f_verdict').value='确认存在';
+  renderScene(); renderBase(); repKpi();
+  toast('已清空');
+});
+$('btnPreview').addEventListener('click', function(){
+  var w=window.open('','_blank');
+  if(!w){ toast('浏览器拦截了弹窗',true); return; }
+  w.document.write(buildReportHtml());
+  w.document.close();
+});
+$('btnExpHtml').addEventListener('click', function(){
+  download('应急响应报告-'+stamp()+'.html', buildReportHtml(), 'text/html');
+  toast('HTML 报告已导出');
+});
+$('btnExpMd').addEventListener('click', function(){
+  download('应急响应报告-'+stamp()+'.md', buildReportMd(), 'text/markdown');
+  toast('Markdown 已导出');
+});
+
+/* 表单持久化 */
+['f_client','f_sys','f_event','f_plat','f_time','f_who','f_scope','f_action','f_harden'].forEach(function(id){
+  $(id).addEventListener('input', function(){
+    ST.form[id]=$(id).value; save();
+    if(id==='f_client'||id==='f_sys') repKpi();
+  });
+});
+$('f_verdict').addEventListener('change', function(){ ST.form.f_verdict=$('f_verdict').value; save(); });
+
+/* ---------- 初始化 ---------- */
+load();
+renderChips();
+renderScene();
+renderBase();
+renderFlow();
+renderScript();
+['f_client','f_sys','f_event','f_plat','f_time','f_who','f_scope','f_action','f_harden'].forEach(function(id){
+  if(ST.form[id]) $(id).value=ST.form[id];
+});
+if(ST.form.f_verdict) $('f_verdict').value=ST.form.f_verdict;
+/* 场景切换时自动带出事件类型 */
+if(!$('f_event').value) $('f_event').value=scene().name;
+document.querySelectorAll('#plat button').forEach(function(b){
+  b.classList.toggle('on', b.dataset.p===ST.plat);
+});
+document.querySelectorAll('#plat2 button').forEach(function(b){
+  b.classList.toggle('on', b.dataset.p===ST.basePlat);
+});
+document.querySelectorAll('nav button').forEach(function(b){
+  b.classList.toggle('on', b.dataset.tab===ST.tab);
+});
+['scene','base','flow','script','report'].forEach(function(t){
+  $('s-'+t).classList.toggle('on', t===ST.tab);
+});
+repKpi();
+</script>
+</body>
+</html>

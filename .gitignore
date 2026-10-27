@@ -1,0 +1,29 @@
+# OS / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 本地产物
+*.log
+!示例/*.log
+*.tmp
+output/
+报告-*.html
+*-分析报告.html
+!示例/*.html
+
+# 敏感数据（脱敏映射表含真实资产，绝不能提交）
+mapping.json
+*映射表*.json
+*.key
+*.pem

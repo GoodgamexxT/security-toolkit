@@ -1,0 +1,2090 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>安全设备巡检基线比对台</title>
+<style>
+:root{
+  --bg:#0f1419; --bg2:#161d26; --bg3:#1d2733; --line:#2a3646;
+  --fg:#dde6f0; --fg2:#8fa3b8; --fg3:#5f7185;
+  --acc:#3d9df6; --acc2:#1f6fd0;
+  --ok:#2ecc71; --warn:#f39c12; --err:#e74c3c; --info:#4aa8e0; --na:#4a5766;
+  --mono:"Cascadia Code","JetBrains Mono",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:0 0 60px}
+header{background:linear-gradient(135deg,#141c26,#1b2735);border-bottom:1px solid var(--line);padding:18px 28px 0;position:sticky;top:0;z-index:60}
+h1{margin:0;font-size:19px;font-weight:600}
+h1 span{color:var(--acc)}
+.sub{color:var(--fg2);font-size:12.5px;margin-top:4px}
+.steps{display:flex;gap:4px;margin-top:14px}
+.steps button{background:none;border:none;border-bottom:2px solid transparent;color:var(--fg3);
+  padding:9px 16px;cursor:pointer;font-size:13.5px;font-family:inherit;transition:.15s}
+.steps button:hover{color:var(--fg)}
+.steps button.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600}
+main{max-width:1400px;margin:0 auto;padding:24px 28px}
+section{display:none}
+section.on{display:block}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:16px}
+.card h2{margin:0 0 12px;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 small{font-weight:400;color:var(--fg3);font-size:12px}
+button.btn{background:var(--acc2);color:#fff;border:none;border-radius:6px;padding:9px 18px;cursor:pointer;
+  font-size:13px;font-family:inherit;font-weight:500;transition:.15s}
+button.btn:hover{background:var(--acc)}
+button.btn:disabled{background:var(--bg3);color:var(--fg3);cursor:not-allowed}
+button.ghost{background:none;border:1px solid var(--line);color:var(--fg2)}
+button.ghost:hover{border-color:var(--acc);color:var(--acc);background:none}
+button.sm{padding:5px 11px;font-size:12px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input[type=text],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:6px;
+  color:var(--fg);padding:8px 10px;font-family:var(--mono);font-size:12.5px;outline:none}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--acc)}
+textarea{width:100%;resize:vertical;line-height:1.5}
+.mini{font-size:11.5px;color:var(--fg3)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg2);cursor:pointer;user-select:none;margin-right:14px}
+.chk input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer}
+.note{background:#152030;border-left:3px solid var(--acc);padding:10px 14px;border-radius:0 6px 6px 0;font-size:12.5px;color:var(--fg2);margin:12px 0}
+.note.warn{background:#2a2113;border-left-color:var(--warn)}
+.kpi{display:flex;gap:12px;flex-wrap:wrap}
+.kpi .k{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:100px}
+.kpi .k b{display:block;font-size:22px;font-family:var(--mono);line-height:1.2}
+.kpi .k span{font-size:11.5px;color:var(--fg2)}
+.kpi .k.ok b{color:var(--ok)}.kpi .k.err b{color:var(--err)}.kpi .k.warn b{color:var(--warn)}.kpi .k.info b{color:var(--info)}
+/* 设备卡片 */
+.dev{background:var(--bg3);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+.dev-head{display:flex;gap:10px;align-items:center;padding:10px 12px;flex-wrap:wrap}
+.dev-head input[type=text]{width:200px}
+.dev-body{padding:0 12px 12px;display:none}
+.dev.open .dev-body{display:block}
+.dev-body textarea{font-size:11.5px;height:150px}
+.dev .cnt{font-size:11.5px;color:var(--fg3);font-family:var(--mono)}
+/* 规则表 */
+table.rules{width:100%;border-collapse:collapse;font-size:12px}
+table.rules th,table.rules td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+table.rules th{background:var(--bg3);color:var(--fg2);font-weight:600;position:sticky;top:0;z-index:2}
+table.rules tr:nth-child(even){background:#131a23}
+/* 矩阵 */
+.matrix-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:8px}
+table.mx{border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%}
+table.mx th,table.mx td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:6px 8px;white-space:nowrap}
+table.mx thead th{background:var(--bg3);position:sticky;top:0;z-index:3;color:var(--fg2);font-weight:600}
+table.mx tbody th{position:sticky;left:0;background:var(--bg2);z-index:2;text-align:left;max-width:330px;white-space:normal}
+table.mx thead th:first-child{left:0;z-index:5}
+table.mx td.cell{cursor:pointer;text-align:center;font-family:var(--mono);min-width:74px}
+table.mx td.cell:hover{outline:2px solid var(--acc);outline-offset:-2px}
+td.s-pass{background:#12291a;color:#4ade80}
+td.s-fail{background:#33151a;color:#ff8a8a;font-weight:600}
+td.s-warn{background:#33280f;color:#fbbf24}
+td.s-manual{background:#2a2340;color:#c4b5fd}
+td.s-info{background:#122a38;color:#7ec8ff}
+td.s-na{background:#141c24;color:#4a5766}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--fg2);margin:10px 0}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.ruletag{display:inline-block;padding:0 6px;border-radius:3px;font-size:10.5px;font-family:var(--mono);margin-left:6px}
+.lv-high{background:#4a0f14;color:#ff8a8a;border:1px solid #7a1f28}
+.lv-medium{background:#4a2410;color:#ffb070;border:1px solid #7a4020}
+.lv-low{background:#12351f;color:#6ee7a0;border:1px solid #1e5c33}
+.lv-info{background:#1a2733;color:#8fa3b8;border:1px solid #2a3646}
+/* 详情面板 */
+#detail{background:var(--bg3);border:1px solid var(--acc);border-radius:8px;padding:14px 16px;margin-top:14px;display:none}
+#detail h3{margin:0 0 8px;font-size:14px}
+#detail pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px;
+  font-family:var(--mono);font-size:11.5px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:8px 0}
+.tl{font-family:var(--mono);font-size:11.5px;color:var(--fg2)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--acc2);
+  color:#fff;padding:11px 22px;border-radius:8px;font-size:13px;opacity:0;transition:.25s;z-index:999;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--err)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1000px){.split{grid-template-columns:1fr}}
+/* 人工核查层 */
+.ovr{font-size:9px;vertical-align:super;color:#c4b5fd}
+.dform{display:grid;grid-template-columns:118px 1fr;gap:8px 12px;align-items:start;margin-top:10px}
+.dform label{font-size:12px;color:var(--fg2);padding-top:7px}
+.dform textarea{min-height:54px;font-size:12px}
+.vbox{background:#2a1414;border-left:3px solid var(--err);padding:10px 14px;border-radius:0 6px 6px 0;margin-top:12px;font-size:12.5px}
+.vbox.ok{background:#12291a;border-left-color:var(--ok)}
+.vbox ul{margin:6px 0 0 18px;padding:0}
+.vbox li{margin:2px 0;font-family:var(--mono);font-size:11.5px}
+.stdline{font-size:11px;color:#7f9ec4;font-family:var(--mono);margin-top:2px}
+td.s-pending{background:#2a2151;color:#c4b5fd;font-weight:600}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>安全设备巡检 <span>基线比对台</span></h1>
+  <div class="sub">多台设备配置横向比对 · 每条判定都能翻到原文核实 · 全程本地处理</div>
+  <div class="steps">
+    <button data-step="1" class="on"><span>①</span> 设备与配置</button>
+    <button data-step="2"><span>②</span> 检查规则</button>
+    <button data-step="3"><span>③</span> 比对结果</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ 步骤1 ============ -->
+<section id="p1" class="on">
+  <div class="card">
+    <h2>① 录入设备 <small>每台设备 = 名称 + 类型 + 一段配置/巡检回显</small></h2>
+    <div class="row">
+      <button class="btn" id="btnAddDev">＋ 添加设备</button>
+      <button class="btn ghost sm" id="btnImportFiles">导入配置文件（可多选）</button>
+      <input type="file" id="fileInput" multiple accept=".txt,.cfg,.conf,.log,.bak,.xml" style="display:none">
+      <button class="btn ghost sm" id="btnImportMerged">粘贴合并文本（多设备）</button>
+      <button class="btn ghost sm" id="btnDemo">载入示例（3 台安全设备）</button>
+      <button class="btn ghost sm" id="btnSavePack">导出配置包</button>
+      <button class="btn ghost sm" id="btnLoadPack">导入配置包</button>
+      <input type="file" id="packFile" accept=".json" style="display:none">
+      <button class="btn ghost sm" id="btnClear">清空</button>
+      <span class="mini" id="devInfo"></span>
+    </div>
+    <div class="note">
+      配置来源随便：设备 Web 上「配置导出」、SSH 里 <code>display current-configuration</code> / <code>show running-config</code>、
+      Xshell 会话日志都行。<b>多台设备请分开粘贴或分文件导入</b>，一个文件可以包含多台设备（用 <code>==== 设备名 ====</code> 分隔，会自动拆）。
+    </div>
+    <div id="devList"></div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="btnNext2">下一步：检查规则 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 步骤2 ============ -->
+<section id="p2">
+  <div class="card">
+    <h2>② 检查规则 <small>内置 22 条安全设备基线项，可启停、可自定义</small></h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn ghost sm" id="btnAllOn">全部启用</button>
+      <button class="btn ghost sm" id="btnAllOff">全部停用</button>
+      <button class="btn ghost sm" id="btnExportRules">导出规则 JSON</button>
+      <button class="btn ghost sm" id="btnImportRules">导入规则 JSON</button>
+      <input type="file" id="ruleFile" accept=".json" style="display:none">
+      <span class="mini" id="ruleInfo"></span>
+    </div>
+    <div class="legend">
+      <span><i style="background:#12291a;border:1px solid #1e5c33"></i>合规</span>
+      <span><i style="background:#33151a;border:1px solid #6b1f1f"></i>不合规</span>
+      <span><i style="background:#33280f;border:1px solid #6b5a1a"></i>需关注</span>
+      <span><i style="background:#2a2340;border:1px solid #42316b"></i>需人工核</span>
+      <span><i style="background:#122a38;border:1px solid #2a4a63"></i>信息项</span>
+      <span><i style="background:#141c24;border:1px solid #2a3646"></i>不适用</span>
+    </div>
+    <div style="max-height:52vh;overflow:auto">
+      <table class="rules" id="ruleTable"></table>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn" id="btnRun">开始比对 →</button>
+      <span class="mini" id="runInfo"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>自定义规则 <small>厂商语法不一样时，自己加一条最省事</small></h2>
+    <div class="mini" style="margin-bottom:6px">
+      粘贴 JSON 数组追加到内置规则后面。<code>pass</code>: <code>found</code>=命中算合规 / <code>absent</code>=命中算不合规 / <code>capture</code>=看捕获值 / <code>info</code>=只展示。
+    </div>
+    <textarea id="customRules" rows="8" placeholder='[
+  {
+    "id": "custom-1",
+    "name": "深信服 AF 开启 IPS 联动",
+    "cat": "策略与防护",
+    "level": "high",
+    "pass": "found",
+    "whenNoHit": "fail",
+    "detect": ["ips[_ ]?link\\s*[:=]\\s*(1|true|enable)"],
+    "advice": "在防护策略里开启 IPS 联动，否则只看流量不做阻断"
+  }
+]'></textarea>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost sm" id="btnApplyCustom">应用自定义规则</button>
+      <button class="btn ghost sm" id="btnResetCustom">清空</button>
+      <span class="mini" id="customInfo"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 步骤3 ============ -->
+<section id="p3">
+  <div class="card">
+    <h2>③ 比对结果 <small>点任意格子可看命中的原始配置行</small></h2>
+    <div class="kpi" id="statBox"></div>
+    <div class="row" style="margin:14px 0">
+      <select id="viewMode" style="width:auto">
+        <option value="matrix" selected>横向矩阵（规则 × 设备）</option>
+        <option value="problems">问题清单（按设备）</option>
+        <option value="byrule">按检查项聚合（哪项最多设备不合规）</option>
+      </select>
+      <select id="filterLevel" style="width:auto">
+        <option value="all">全部级别</option>
+        <option value="high">仅高危</option>
+        <option value="highmed">高危 + 中危</option>
+      </select>
+      <span class="chk"><input type="checkbox" id="hidePass"> 隐藏合规项</span>
+      <span class="chk"><input type="checkbox" id="hideNa" checked> 隐藏不适用的行</span>
+      <input type="text" id="search" placeholder="搜索规则 / 设备" style="max-width:240px">
+      <button class="btn ghost sm" id="btnCsv">导出 CSV</button>
+      <button class="btn ghost sm" id="btnReport">导出巡检报告(HTML)</button>
+      <button class="btn ghost sm" id="btnMd">导出 Markdown</button>
+      <button class="btn ghost sm" id="btnJson">导出 JSON</button>
+      <button class="btn ghost sm" id="btnValidate">完整性校验</button>
+      <button class="btn ghost sm" id="btnImportChk">导入清单 JSON</button>
+      <input type="text" id="chkDevName" placeholder="导入时的设备名（可选）" style="width:200px">
+      <input type="file" id="chkFile" accept=".json" style="display:none">
+      <span class="chk"><input type="checkbox" id="maskOn" checked> 报告脱敏</span>
+    </div>
+    <div class="row" style="margin:-4px 0 12px">
+      <span class="mini">巡检人</span>
+      <input type="text" id="operator" placeholder="姓名" style="width:130px">
+      <span class="mini">巡检周期</span>
+      <input type="text" id="cycle" placeholder="如 2026Q1 / 2026-10" style="width:150px">
+      <span class="mini" id="saveState"></span>
+      <button class="btn ghost sm" id="btnResetAll">清空核查记录</button>
+    </div>
+    <div id="matrixView">
+      <div class="legend">
+        <span><i style="background:#12291a"></i>合规 ✓</span>
+        <span><i style="background:#33151a"></i>不合规 ✗</span>
+        <span><i style="background:#33280f"></i>需关注 !</span>
+        <span><i style="background:#2a2340"></i>需人工 ?</span>
+        <span><i style="background:#122a38"></i>信息 i</span>
+        <span><i style="background:#141c24"></i>不适用 —</span>
+      </div>
+      <div class="matrix-wrap"><table class="mx" id="matrix"></table></div>
+    </div>
+    <div id="problemsView" style="display:none"></div>
+    <div id="byRuleView" style="display:none;max-height:70vh;overflow:auto"></div>
+    <div id="detail"></div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== CORE BEGIN ===================== */
+/* 纯函数区：规则引擎与报告生成，不依赖 DOM */
+
+/* ---------- 内置规则集（安全设备） ---------- */
+var BUILTIN_RULES = [
+  { id:'default-account', name:'默认/高危账号名', cat:'账号与认证', level:'medium', pass:'capture',
+    detect:['local-user\\s+(\\S+)\\s+(?:password|service-type)',
+            'username\\s+(\\S+)\\s+(?:privilege|password|secret)',
+            '^\\s*(?:user|account)\\s*[:=]\\s*(\\S+)'],
+    badValues:['admin','root','test','guest','user','default','manager','super'],
+    whenNoHit:'manual',
+    advice:'默认账号名易被字典攻击，建议改名并禁用不必要账号；管理员账号与审计账号分离。' },
+  { id:'pwd-policy', name:'口令复杂度策略', cat:'账号与认证', level:'high', pass:'found',
+    detect:['password-policy','password\\s+(?:min-?length|complexity|control)',
+            'pam_pwquality','minlen\\s*=\\s*\\d+','口令.{0,6}(复杂度|长度)'],
+    whenNoHit:'fail',
+    advice:'启用口令复杂度：长度≥8、同时包含大小写字母+数字+特殊字符，并设置有效期与历史口令限制。' },
+  { id:'login-lock', name:'登录失败锁定', cat:'账号与认证', level:'medium', pass:'found',
+    detect:['(?:login|auth|administrator).{0,20}(?:retry|fail).{0,10}(?:times|count|\\d+)',
+            'lockout','max(?:imum)?[\\s_-]*attempts','maxauthtries','失败.{0,6}锁定'],
+    whenNoHit:'fail',
+    advice:'配置连续失败 5 次锁定账号 30 分钟以上，防止在线暴力破解。' },
+  { id:'dual-admin', name:'三权分立/多管理员', cat:'账号与认证', level:'medium', pass:'found',
+    detect:['(?:audit|security)[-_]?admin','审计管理员','系统管理员',
+            'user-role.{0,20}(?:audit|monitor)','role\\s+(?:audit|secadmin)'],
+    whenNoHit:'manual',
+    advice:'等保要求系统管理、安全管理、审计管理三员分立，避免单一账号拥有全部权限。' },
+  { id:'aaa', name:'集中认证 AAA/RADIUS', cat:'账号与认证', level:'low', pass:'found',
+    detect:['aaa-server','tacacs','radius-server','hwtacacs','认证服务器'],
+    whenNoHit:'warn',
+    advice:'建议接入 TACACS+/RADIUS 集中认证，便于统一口令策略与操作审计。' },
+
+  { id:'telnet', name:'禁用 Telnet 明文管理', cat:'远程管理', level:'high', pass:'absent',
+    detect:['telnet\\s+server\\s+enable','telnet-server','^\\s*telnet\\s+(?:\\d+|on\\b)',
+            'transport\\s+input\\s+.*telnet','service\\s+telnet\\s*\\{?\\s*disable\\s*=\\s*no'],
+    exempt:['telnet\\s+server\\s+disable','^\\s*no\\s+telnet','^\\s*undo\\s+telnet',
+            'disable\\s*=\\s*yes'],
+    whenNoHit:'pass',
+    advice:'关闭 Telnet，改用 SSH/HTTPS 管理；Telnet 口令与配置均为明文传输。' },
+  { id:'https-admin', name:'管理界面启用 HTTPS', cat:'远程管理', level:'medium', pass:'found',
+    detect:['ip\\s+https\\s+enable','https\\s+server\\s+enable','http\\s+secure-server',
+            'web-manager.{0,20}https','ssl\\s+server\\s+enable','https-port'],
+    whenNoHit:'manual',
+    advice:'管理界面必须启用 HTTPS 并禁用 TLS1.0/1.1 与弱加密套件。' },
+  { id:'http-plain', name:'禁用 HTTP 明文管理', cat:'远程管理', level:'high', pass:'absent',
+    detect:['^\\s*ip\\s+http\\s+enable','^\\s*http\\s+server\\s+enable','^\\s*ip\\s+http\\s+server\\s*$',
+            'http-port\\s*=\\s*80\\b','web.*?enable\\s*[:=]\\s*(?:1|true|yes)\\s*#?\\s*http'],
+    exempt:['no\\s+ip\\s+http','undo\\s+ip\\s+http','secure-server'],
+    whenNoHit:'pass',
+    advice:'关闭 HTTP 明文管理入口，仅保留 HTTPS。' },
+  { id:'admin-source', name:'管理访问源限制', cat:'远程管理', level:'high', pass:'found',
+    detect:['admin-source','trusted.{0,10}(?:host|ip)','ssh\\s+server\\s+acl',
+            'access-class','management.{0,15}allow','白名单|whitelist','permit\\s+host\\s+\\d'],
+    whenNoHit:'fail',
+    advice:'通过 ACL/可信主机限制管理面访问源，禁止任意地址访问管理端口。' },
+
+  { id:'syslog', name:'日志外发 syslog', cat:'日志与审计', level:'high', pass:'found',
+    detect:['info-center\\s+loghost','logging\\s+host','syslog.{0,15}(?:server|host)',
+            '^\\s*loghost\\s+\\d','log-server','@\\d{1,3}(?:\\.\\d{1,3}){3}'],
+    whenNoHit:'fail',
+    advice:'配置日志外发到日志审计平台，本地日志易被覆盖或清空，等保要求留存 6 个月。' },
+  { id:'ntp', name:'NTP 时间同步', cat:'日志与审计', level:'high', pass:'found',
+    detect:['ntp-service\\s+(?:unicast|multicast)-server','ntp-service\\s+enable',
+            '^\\s*ntp\\s+server\\s+\\d','^\\s*server\\s+\\S+\\s+(?:iburst|prefer)',
+            'ntpdate','(?:ntp|时间同步)[^\\n]{0,12}(?:服务器|server)\\s*[:：=]\\s*\\S+'],
+    whenNoHit:'fail',
+    advice:'配置至少两台 NTP 服务器。时间不同步会导致日志时序错乱，直接影响溯源与取证。' },
+  { id:'audit-log', name:'命令/会话审计', cat:'日志与审计', level:'medium', pass:'found',
+    detect:['audit.{0,12}enable','命令审计','会话审计','cmd-?accounting',
+            'accounting\\s+commands','record\\s+session'],
+    whenNoHit:'fail',
+    advice:'开启命令审计与会话回放，满足操作可追溯要求。' },
+
+  { id:'snmp-vuln', name:'SNMP 弱团体字', cat:'SNMP', level:'high', pass:'capture',
+    detect:['snmp-agent\\s+community\\s+(?:read|write)\\s+(\\S+)',
+            'snmp-server\\s+community\\s+(\\S+)',
+            '(?:ro|rw)community\\s+(\\S+)',
+            'community\\s*[:=]?\\s*([A-Za-z0-9_@.-]{3,})'],
+    badValues:['public','private','cisco','admin','snmp','ro','rw','123456','snmpd'],
+    whenNoHit:'pass',
+    advice:'SNMP 团体字等同口令，public/private 属高危；建议改用 SNMPv3 并做访问控制。' },
+  { id:'snmpv3', name:'SNMPv3 启用', cat:'SNMP', level:'low', pass:'found',
+    detect:['snmp-agent\\s+usm-user.{0,30}v3','snmp-server\\s+user\\s+\\S+.{0,30}v3',
+            'createUser\\s+\\S+\\s+\\S+\\s+(?:SHA|MD5)'],
+    whenNoHit:'info',
+    advice:'条件允许时使用 SNMPv3（认证+加密），替代 v1/v2c。' },
+
+  { id:'any-any', name:'存在 any-any 放通策略', cat:'策略与防护', level:'high', pass:'absent',
+    detect:['access-list\\s+\\S+\\s+permit\\s+ip\\s+any\\s+any',
+            '^\\s*permit\\s+ip\\s+any\\s+any',
+            '(?:source|src)\\s*[:=]?\\s*any.{0,40}(?:destination|dst)\\s*[:=]?\\s*any.{0,20}(?:permit|allow|accept)',
+            '(?:permit|allow|accept).{0,30}any.{0,20}any'],
+    exempt:['deny\\s+ip\\s+any\\s+any','rule.{0,10}deny'],
+    whenNoHit:'pass',
+    advice:'删除或收紧 any-any 放通规则；如确需临时放通，应设置时间窗口并记录审批。' },
+  { id:'default-deny', name:'默认拒绝策略', cat:'策略与防护', level:'high', pass:'found',
+    detect:['default.{0,15}(?:deny|drop|reject)','policy.{0,15}default-action\\s+deny',
+            'default-action\\s+deny','默认.{0,6}(?:拒绝|丢弃)'],
+    whenNoHit:'fail',
+    advice:'默认策略应为拒绝，白名单式放通，避免隐式全通。' },
+  { id:'waf-mode', name:'WAF 防护模式=拦截', cat:'策略与防护', level:'high', pass:'capture',
+    detect:['(?:protection|defense|waf|protect)[^\\n]{0,25}(?:mode|模式)\\s*[:=]?\\s*([A-Za-z拦截告警监测]{2,10})',
+            '模式\\s*[:：]\\s*([A-Za-z拦截告警监测]{2,10})'],
+    badValues:['alert','monitor','detect','learning','告警','仅告警','监测','学习'],
+    whenNoHit:'manual',
+    advice:'WAF 长期处于「仅告警」等于没有防护，确认无误后切到「拦截」模式。' },
+  { id:'sig-version', name:'特征库/规则库版本', cat:'策略与防护', level:'medium', pass:'info',
+    detect:['(?:signature|rule|特征库|规则库|ips|av)[^\\n]{0,25}(?:version|版本号?)\\s*[:：=]?\\s*([\\w.\\-]{2,24})'],
+    whenNoHit:'manual',
+    advice:'记录版本号与更新日期，超过 30 天未更新应安排升级。' },
+
+  { id:'license', name:'License/授权到期', cat:'证书与许可', level:'medium', pass:'info',
+    detect:['(?:license|授权|expire|到期|有效期)[^\\n]{0,40}?(\\d{4}[-/]\\d{1,2}[-/]\\d{1,2})'],
+    whenNoHit:'manual',
+    advice:'授权到期会导致特征库停更、防护失效，提前 30 天申请续期。' },
+  { id:'cert', name:'HTTPS 证书有效期', cat:'证书与许可', level:'medium', pass:'manual',
+    detect:[], whenNoHit:'manual',
+    advice:'证书有效期通常不在配置里，需在设备 Web 界面或浏览器查看，建议纳入统一证书台账。' },
+
+  { id:'ha', name:'双机热备/HA', cat:'高可用', level:'low', pass:'found',
+    detect:['hrp\\s+enable','vrrp\\s+vrid','standby\\s+(?:ip|group)',
+            'ha\\s+(?:enable|group)','主备|双机'],
+    whenNoHit:'info',
+    advice:'核心边界设备建议双机热备，避免单点故障导致业务中断。' },
+  { id:'ftp-tftp', name:'未启用 FTP/TFTP 服务', cat:'其他', level:'medium', pass:'absent',
+    detect:['^\\s*ftp\\s+server\\s+enable','tftp-server\\s+enable','service\\s+ftp',
+            'vsftpd.{0,10}listen\\s*=\\s*YES'],
+    exempt:['no\\s+ftp','undo\\s+ftp'],
+    whenNoHit:'pass',
+    advice:'FTP/TFTP 无加密且常被用作配置外泄通道，非必要不开启。' }
+];
+
+/* ---------- 多设备文本拆分 ---------- */
+function splitMultiDevice(text) {
+  var src = String(text || '');
+  var lines = src.split(/\r?\n/);
+  /* 分隔行：同一符号连续 4 个以上、两侧对称，如 ==== FW-01 ==== 或 ---- WAF-02 ---- */
+  var sepRe = /^\s*([=#\-*])\1{3,}\s*(.{1,60}?)\s*\1{3,}\s*$/;
+  var blocks = [], cur = null;
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(sepRe);
+    if (m) {
+      if (cur) blocks.push(cur);
+      cur = { name: m[2].trim(), lines: [] };
+    } else if (cur) {
+      cur.lines.push(lines[i]);
+    }
+  }
+  if (cur) blocks.push(cur);
+  if (blocks.length < 2) return null;
+  return blocks.map(function (b) { return { name: b.name, text: b.lines.join('\n') }; });
+}
+
+/* ---------- 正则匹配 ---------- */
+function findHits(text, pattern) {
+  var out = [];
+  var re;
+  try { re = new RegExp(pattern, 'gim'); } catch (e) { return out; }
+  var m, guard = 0;
+  while ((m = re.exec(text)) !== null) {
+    guard++;
+    if (guard > 5000) break;
+    out.push({ text: String(m[0]).trim(), index: m.index, groups: m.slice(1) });
+    if (m.index === re.lastIndex) re.lastIndex++;
+  }
+  return out;
+}
+
+function lineAround(text, index) {
+  var s = Math.max(0, text.lastIndexOf('\n', index - 1) + 1);
+  var e = text.indexOf('\n', index);
+  if (e < 0) e = text.length;
+  return text.slice(s, e);
+}
+
+/* 过滤掉 no/undo 开头与 exempt 命中的行 */
+function effectiveHits(text, rule) {
+  var hits = [];
+  (rule.detect || []).forEach(function (p) { hits = hits.concat(findHits(text, p)); });
+  if (!hits.length) return [];
+  var exemptRes = (rule.exempt || []).map(function (p) {
+    try { return new RegExp(p, 'i'); } catch (e) { return null; }
+  }).filter(Boolean);
+
+  return hits.filter(function (h) {
+    var ln = lineAround(text, h.index);
+    /* 注释掉的配置不算生效（# ! ; // -- 开头），除非规则显式要求包含注释 */
+    if (!rule.includeComments && /^\s*(?:[#!;]|\/\/|--)/.test(ln)) return false;
+    if (/^\s*(?:no|undo)\s+/i.test(ln)) return false;
+    for (var i = 0; i < exemptRes.length; i++) {
+      if (exemptRes[i].test(ln)) return false;
+    }
+    return true;
+  });
+}
+
+/* 取第一个非空捕获组 */
+function firstGroup(h) {
+  if (!h.groups) return '';
+  for (var i = 0; i < h.groups.length; i++) {
+    if (h.groups[i] != null && String(h.groups[i]).trim() !== '') return String(h.groups[i]).trim();
+  }
+  return '';
+}
+
+/* ---------- 单条规则判定 ---------- */
+var STATUS_LABEL = { pass:'合规', fail:'不合规', warn:'需关注', manual:'需人工核', info:'信息', na:'不适用' };
+
+function evalRule(rule, text, devType) {
+  if (!text || !String(text).trim()) {
+    return { status: 'na', reason: '设备未提供配置内容', hits: [], value: '' };
+  }
+  if (rule.types && rule.types.length && rule.types.indexOf('*') < 0
+      && devType && rule.types.indexOf(devType) < 0) {
+    return { status: 'na', reason: '该规则不适用于此类设备', hits: [], value: '' };
+  }
+
+  var hits = effectiveHits(text, rule);
+  var value = hits.length ? firstGroup(hits[0]) : '';
+
+  switch (rule.pass) {
+    case 'found':
+      return hits.length
+        ? { status: 'pass', hits: hits, value: value, reason: '命中 ' + hits.length + ' 处' }
+        : { status: (rule.whenNoHit || 'fail'), hits: [], value: '', reason: '未匹配到相关配置' };
+
+    case 'absent':
+      return hits.length
+        ? { status: 'fail', hits: hits, value: value, reason: '匹配到 ' + hits.length + ' 处（应不存在）' }
+        : { status: 'pass', hits: [], value: '', reason: '未发现相关配置' };
+
+    case 'capture':
+      if (!hits.length) {
+        return { status: (rule.whenNoHit || 'pass'), hits: [], value: '', reason: '未匹配到该项配置' };
+      }
+      var bad = (rule.badValues || []).map(function (v) { return String(v).toLowerCase(); });
+      var badHit = null;
+      for (var i = 0; i < hits.length; i++) {
+        var v = firstGroup(hits[i]);
+        if (v && bad.indexOf(v.toLowerCase()) >= 0) { badHit = v; value = v; break; }
+      }
+      if (badHit) return { status: 'fail', hits: hits, value: badHit, reason: '命中弱值：' + badHit };
+      return { status: 'pass', hits: hits, value: value, reason: value ? ('当前值：' + value) : '命中且未在弱值清单内' };
+
+    case 'info':
+      return { status: 'info', hits: hits, value: value,
+        reason: value ? ('捕获值：' + value) : (hits.length ? '已匹配' : '未捕获到值') };
+
+    case 'manual':
+    default:
+      return { status: 'manual', hits: hits, value: value, reason: '该项需人工在设备上确认' };
+  }
+}
+
+/* ---------- 全量比对 ---------- */
+function evaluateAll(devices, rules) {
+  var res = {};
+  devices.forEach(function (d) {
+    res[d.id] = {};
+    rules.forEach(function (r) {
+      if (r.enabled === false) return;
+      /* 人工核查项可以只绑定到某几台设备，其余设备标「不适用」 */
+      if (r.devices && r.devices.length && r.devices.indexOf(d.id) < 0) {
+        res[d.id][r.id] = { status: 'na', reason: '该检查项只绑定到指定设备', hits: [], value: '' };
+        return;
+      }
+      res[d.id][r.id] = evalRule(r, d.text, d.type);
+    });
+  });
+  return res;
+}
+
+/* ---------- 统计 ---------- */
+function computeStats(devices, rules, results) {
+  var act = rules.filter(function (r) { return r.enabled !== false; });
+  var perDev = devices.map(function (d) {
+    var rec = results[d.id] || {};
+    var pass = 0, fail = 0, warn = 0, manual = 0, info = 0, na = 0;
+    act.forEach(function (r) {
+      var s = rec[r.id] ? rec[r.id].status : 'na';
+      if (s === 'pass') pass++;
+      else if (s === 'fail') fail++;
+      else if (s === 'warn') warn++;
+      else if (s === 'manual') manual++;
+      else if (s === 'info') info++;
+      else na++;
+    });
+    var total = pass + fail + warn;
+    return {
+      id: d.id, name: d.name, type: d.type,
+      pass: pass, fail: fail, warn: warn, manual: manual, info: info, na: na,
+      rate: total ? Math.round(pass * 100 / total) : 0
+    };
+  });
+  var perRule = act.map(function (r) {
+    var failN = 0, passN = 0, manualN = 0, naN = 0;
+    devices.forEach(function (d) {
+      var s = results[d.id] && results[d.id][r.id] ? results[d.id][r.id].status : 'na';
+      if (s === 'fail') failN++;
+      else if (s === 'pass') passN++;
+      else if (s === 'manual') manualN++;
+      else naN++;
+    });
+    return { id: r.id, name: r.name, cat: r.cat, level: r.level, fail: failN, pass: passN, manual: manualN, na: naN };
+  });
+  var totalFail = perDev.reduce(function (s, d) { return s + d.fail; }, 0);
+  return { perDev: perDev, perRule: perRule, totalFail: totalFail };
+}
+
+/* ---------- 脱敏（报告外发用） ---------- */
+function maskSensitive(text) {
+  var map = {}, seq = 0;
+  function tok(kind, val) {
+    var k = kind + ':' + val.toLowerCase();
+    if (!map[k]) { seq++; map[k] = '[[' + kind + '_' + ('00' + seq).slice(-3) + ']]'; }
+    return map[k];
+  }
+  var out = String(text || '');
+  /* 先 IPv4 */
+  out = out.replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, function (m) {
+    var p = m.split('.');
+    for (var i = 0; i < 4; i++) { if (parseInt(p[i], 10) > 255) return m; }
+    return tok('IP', m);
+  });
+  /* 再域名（常见 TLD） */
+  out = out.replace(/\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+(?:com|cn|net|org|edu|gov|local|corp|lan|io|cc|top|vip|info)\b/gi,
+    function (m) { return tok('DOM', m); });
+  return out;
+}
+
+/* ---------- CSV ---------- */
+function buildMatrixCsv(devices, rules, results) {
+  var act = rules.filter(function (r) { return r.enabled !== false; });
+  function esc(v) {
+    v = String(v == null ? '' : v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  var head = ['类别', '检查项', '级别'].concat(devices.map(function (d) { return d.name; }));
+  var lines = [head.map(esc).join(',')];
+  act.forEach(function (r) {
+    var row = [r.cat, r.name, r.level];
+    devices.forEach(function (d) {
+      var s = results[d.id] && results[d.id][r.id] ? results[d.id][r.id].status : 'na';
+      row.push(STATUS_LABEL[s] + (results[d.id] && results[d.id][r.id] && results[d.id][r.id].value
+        ? '(' + results[d.id][r.id].value + ')' : ''));
+    });
+    lines.push(row.map(esc).join(','));
+  });
+  return lines.join('\n');
+}
+
+/* ---------- HTML 巡检报告 ---------- */
+function buildReportHtml(devices, rules, results, stats, opts) {
+  opts = opts || {};
+  var mask = !!opts.mask;
+  function M(s) { return mask ? maskSensitive(String(s == null ? '' : s)) : String(s == null ? '' : s); }
+  function E(s) { return M(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var act = rules.filter(function (r) { return r.enabled !== false; });
+  var LV = { high: '高危', medium: '中危', low: '低危', info: '信息' };
+
+  var html = [];
+  html.push('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">');
+  html.push('<title>安全设备巡检报告</title><style>');
+  html.push('body{font:13.5px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:1120px;margin:0 auto;padding:32px 24px;color:#222}');
+  html.push('h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:10px}');
+  html.push('h2{font-size:16px;margin-top:28px;border-bottom:1px solid #e3e8ee;padding-bottom:5px}');
+  html.push('table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12px}');
+  html.push('th,td{border:1px solid #ccd4de;padding:5px 8px;text-align:left;vertical-align:top}');
+  html.push('th{background:#f2f5f8}');
+  html.push('.p{color:#137333;font-weight:600}.f{color:#c5221f;font-weight:600}');
+  html.push('.w{color:#b06000;font-weight:600}.m{color:#6b4fa8}.i{color:#1a73a7}.n{color:#999}');
+  html.push('.meta{color:#888;font-size:12px;border-bottom:1px solid #eee;padding-bottom:12px;margin-bottom:20px}');
+  html.push('.box{background:#f7f9fb;border-left:3px solid #1a73a7;padding:10px 14px;margin:12px 0;font-size:12.5px}');
+  html.push('.warnbox{background:#fdf6ec;border-left-color:#e8a33d}');
+  html.push('</style></head><body>');
+
+  html.push('<h1>安全设备巡检报告</h1>');
+  html.push('<div class="meta">生成时间：' + new Date().toLocaleString('zh-CN')
+    + ' ｜ 设备 ' + devices.length + ' 台 ｜ 检查项 ' + act.length + ' 条'
+    + (mask ? ' ｜ <b>资产信息已脱敏</b>' : '') + '</div>');
+
+  html.push('<h2>一、巡检概况</h2>');
+  html.push('<table><thead><tr><th>设备</th><th>类型</th><th>合规</th><th>不合规</th><th>需关注</th><th>需人工核</th><th>合规率</th></tr></thead><tbody>');
+  stats.perDev.forEach(function (d) {
+    html.push('<tr><td>' + E(d.name) + '</td><td>' + E(typeLabel(d.type)) + '</td><td class="p">' + d.pass
+      + '</td><td class="f">' + d.fail + '</td><td class="w">' + d.warn + '</td><td class="m">' + d.manual
+      + '</td><td>' + d.rate + '%</td></tr>');
+  });
+  html.push('</tbody></table>');
+
+  html.push('<h2>二、共性问题（按检查项汇总）</h2>');
+  var bad = stats.perRule.filter(function (x) { return x.fail > 0; })
+    .sort(function (a, b) { return b.fail - a.fail || (SEV_ORDER[b.level] || 0) - (SEV_ORDER[a.level] || 0); });
+  if (!bad.length) {
+    html.push('<div class="box">所有启用检查项均未发现不合规。</div>');
+  } else {
+    html.push('<table><thead><tr><th>检查项</th><th>类别</th><th>级别</th><th>不合规设备数</th><th>影响设备</th></tr></thead><tbody>');
+    bad.forEach(function (x) {
+      var names = [];
+      devices.forEach(function (d) {
+        var s = results[d.id] && results[d.id][x.id] ? results[d.id][x.id].status : 'na';
+        if (s === 'fail') names.push(d.name);
+      });
+      html.push('<tr><td>' + E(x.name) + '</td><td>' + E(x.cat) + '</td><td>' + (LV[x.level] || x.level)
+        + '</td><td class="f">' + x.fail + '/' + devices.length + '</td><td>' + E(names.join('、')) + '</td></tr>');
+    });
+    html.push('</tbody></table>');
+  }
+
+  html.push('<h2>三、逐设备问题清单与整改建议</h2>');
+  devices.forEach(function (d) {
+    var rec = results[d.id] || {};
+    var probs = act.filter(function (r) { return rec[r.id] && rec[r.id].status === 'fail'; });
+    var warns = act.filter(function (r) { return rec[r.id] && rec[r.id].status === 'warn'; });
+    html.push('<h3 style="font-size:14.5px;margin-top:22px">' + E(d.name) + '（' + E(typeLabel(d.type)) + '）</h3>');
+    if (!probs.length && !warns.length) {
+      html.push('<div class="box">本次未发现不合规项。</div>');
+    }
+    if (probs.length) {
+      html.push('<table><thead><tr><th style="width:56px">级别</th><th style="width:180px">检查项</th><th>命中配置</th><th>整改建议</th></tr></thead><tbody>');
+      probs.forEach(function (r) {
+        var rr = rec[r.id];
+        var hits = (rr.hits || []).slice(0, 3).map(function (h) { return '<code>' + E(h.text) + '</code>'; }).join('<br>');
+        html.push('<tr><td class="f">' + (LV[r.level] || r.level) + '</td><td>' + E(r.name)
+          + '</td><td>' + (hits || '<span class="n">—</span>') + '</td><td>' + E(r.advice || '') + '</td></tr>');
+      });
+      html.push('</tbody></table>');
+    }
+    if (warns.length) {
+      html.push('<div class="box warnbox"><b>需关注：</b>'
+        + warns.map(function (r) { return E(r.name); }).join('、') + '</div>');
+    }
+  });
+
+  html.push('<h2>四、检查项矩阵</h2>');
+  html.push('<table><thead><tr><th>检查项</th>');
+  devices.forEach(function (d) { html.push('<th>' + E(d.name) + '</th>'); });
+  html.push('</tr></thead><tbody>');
+  act.forEach(function (r) {
+    html.push('<tr><td>' + E(r.name) + '</td>');
+    devices.forEach(function (d) {
+      var rr = results[d.id] && results[d.id][r.id] ? results[d.id][r.id] : { status: 'na' };
+      var cls = { pass: 'p', fail: 'f', warn: 'w', manual: 'm', info: 'i', na: 'n' }[rr.status] || 'n';
+      var mark = { pass: '✓', fail: '✗', warn: '!', manual: '?', info: 'i', na: '—' }[rr.status] || '—';
+      html.push('<td class="' + cls + '">' + mark + (rr.value ? ' ' + E(rr.value) : '') + '</td>');
+    });
+    html.push('</tr>');
+  });
+  html.push('</tbody></table>');
+
+  html.push('<h2>五、说明与免责</h2>');
+  html.push('<div class="box">本报告由配置文本自动比对生成，规则基于常见设备语法做启发式匹配。'
+    + '<b>「需人工核」项无法从配置判断，必须登设备确认</b>；「不合规」也建议抽样复核命中行，避免厂商语法差异造成误判。'
+    + (mask ? '报告中 IP、域名已脱敏。' : '') + '</div>');
+  html.push('</body></html>');
+  return html.join('\n');
+}
+
+function typeLabel(t) {
+  return ({ fw: '防火墙', waf: 'WAF', ips: 'IPS/IDS', audit: '日志审计', other: '其他' })[t] || t || '其他';
+}
+var SEV_ORDER = { high: 3, medium: 2, low: 1, info: 0 };
+
+/* ===================================================================
+   人工核查层 / 等保条款 / 完整性校验 / 清单格式互转（纯函数）
+   =================================================================== */
+
+/* 等保条款映射：只引用到子类（8.1.x），不编造细项编号 —— 具体条款号按项目定级结果核对 */
+var STANDARD_MAP = {
+  'default-account': '等保2.0 三级 · 8.1.4 安全计算环境 · 身份鉴别',
+  'pwd-policy':      '等保2.0 三级 · 8.1.4 安全计算环境 · 身份鉴别',
+  'login-lock':      '等保2.0 三级 · 8.1.4 安全计算环境 · 身份鉴别',
+  'dual-admin':      '等保2.0 三级 · 8.1.4 安全计算环境 · 访问控制',
+  'aaa':             '等保2.0 三级 · 8.1.4 安全计算环境 · 身份鉴别',
+  'telnet':          '等保2.0 三级 · 8.1.2 安全通信网络 · 通信传输',
+  'https-admin':     '等保2.0 三级 · 8.1.2 安全通信网络 · 通信传输',
+  'http-plain':      '等保2.0 三级 · 8.1.2 安全通信网络 · 通信传输',
+  'admin-source':    '等保2.0 三级 · 8.1.3 安全区域边界 · 访问控制',
+  'syslog':          '等保2.0 三级 · 8.1.5 安全管理中心 · 集中管控',
+  'ntp':             '等保2.0 三级 · 8.1.5 安全管理中心 · 集中管控',
+  'audit-log':       '等保2.0 三级 · 8.1.4 安全计算环境 · 安全审计',
+  'snmp-vuln':       '等保2.0 三级 · 8.1.4 安全计算环境 · 身份鉴别',
+  'snmpv3':          '基线 · 网络设备加固',
+  'any-any':         '等保2.0 三级 · 8.1.3 安全区域边界 · 访问控制',
+  'default-deny':    '等保2.0 三级 · 8.1.3 安全区域边界 · 访问控制',
+  'waf-mode':        '等保2.0 三级 · 8.1.3 安全区域边界 · 入侵防范',
+  'sig-version':     '等保2.0 三级 · 8.1.3 安全区域边界 · 入侵防范',
+  'license':         '基线 · 设备运维管理',
+  'cert':            '基线 · 设备运维管理',
+  'ha':              '基线 · 可用性保障',
+  'ftp-tftp':        '基线 · 网络设备加固'
+};
+/* 必须留证的检查项 */
+var EVIDENCE_REQUIRED = { 'cert': true, 'license': true, 'sig-version': true, 'dual-admin': true, 'waf-mode': true };
+
+function ruleStandard(rule) {
+  return rule.standard || STANDARD_MAP[rule.id] || '基线 · 通用';
+}
+function ruleEvidenceRequired(rule) {
+  return rule.evidenceRequired != null ? !!rule.evidenceRequired : !!EVIDENCE_REQUIRED[rule.id];
+}
+
+/* 把人工改判叠加到自动结果上，得到"最终生效"的结果集 */
+function mergeResults(devices, rules, results, manual) {
+  var out = {};
+  devices.forEach(function (d) {
+    out[d.id] = {};
+    rules.forEach(function (r) {
+      if (r.enabled === false) return;
+      var base = results && results[d.id] && results[d.id][r.id];
+      if (!base) return;
+      var m = manual && manual[d.id] && manual[d.id][r.id];
+      if (m && m.override) {
+        out[d.id][r.id] = {
+          status: m.override, hits: base.hits || [], value: base.value || '',
+          reason: '人工改判（原自动判定：' + (STATUS_LABEL[base.status] || base.status) + '）',
+          autoStatus: base.status, overridden: true
+        };
+      } else {
+        out[d.id][r.id] = base;
+      }
+    });
+  });
+  return out;
+}
+
+/* 完整性校验：未判定 / 不通过未填问题 / 需留证未填证据 */
+function validateChecklist(devices, rules, merged, manual) {
+  var notDone = [], failNoIssue = [], evidenceMissing = [];
+  devices.forEach(function (d) {
+    rules.forEach(function (r) {
+      var e = merged[d.id] && merged[d.id][r.id];
+      if (!e || e.status === 'na') return;
+      var m = (manual && manual[d.id] && manual[d.id][r.id]) || {};
+      if (e.status === 'pending') notDone.push({ device: d.name, rule: r.name });
+      if (e.status === 'fail' && !String(m.issue || '').trim()) {
+        failNoIssue.push({ device: d.name, rule: r.name });
+      }
+      /* 需留证：只要已给出结论（非不适用、非待定）就必须有证据 —— 人工核实类尤其如此 */
+      if (ruleEvidenceRequired(r) && e.status !== 'na' && e.status !== 'pending'
+          && !String(m.evidence || '').trim()) {
+        evidenceMissing.push({ device: d.name, rule: r.name });
+      }
+    });
+  });
+  return {
+    notDone: notDone, failNoIssue: failNoIssue, evidenceMissing: evidenceMissing,
+    total: notDone.length + failNoIssue.length + evidenceMissing.length
+  };
+}
+
+/* Markdown 报告（对齐清单式工具的阅读习惯） */
+function buildMarkdownReport(devices, rules, merged, stats, manual, meta) {
+  meta = meta || {};
+  var act = rules.filter(function (r) { return r.enabled !== false; });
+  var L = [];
+  L.push('# 安全巡检报告', '');
+  L.push('| 项目 | 内容 |', '|---|---|');
+  L.push('| 巡检人 | ' + (meta.operator || '（未填写）') + ' |');
+  L.push('| 巡检周期 | ' + (meta.cycle || '（未填写）') + ' |');
+  L.push('| 设备数 | ' + devices.length + ' |');
+  L.push('| 检查项 | ' + act.length + ' |');
+  L.push('| 生成时间 | ' + new Date().toLocaleString('zh-CN') + ' |', '');
+
+  L.push('## 总览', '');
+  var tot = { pass: 0, fail: 0, warn: 0, manual: 0, info: 0, na: 0 };
+  devices.forEach(function (d) {
+    act.forEach(function (r) {
+      var e = merged[d.id] && merged[d.id][r.id];
+      if (e && tot[e.status] != null) tot[e.status]++;
+    });
+  });
+  L.push('- ✅ 合规：**' + tot.pass + '**');
+  L.push('- ❌ 不合规：**' + tot.fail + '**');
+  L.push('- ⚠️ 需关注：' + tot.warn);
+  L.push('- ❓ 需人工核：' + tot.manual);
+  L.push('- ⚪ 不适用：' + tot.na, '');
+  L.push('## 设备概览', '');
+  L.push('| 设备 | 类型 | 合规 | 不合规 | 需关注 | 人工核 | 合规率 |', '|---|---|---|---|---|---|---|');
+  stats.perDev.forEach(function (d) {
+    L.push('| ' + d.name + ' | ' + typeLabel(d.type) + ' | ' + d.pass + ' | ' + d.fail + ' | '
+      + d.warn + ' | ' + d.manual + ' | ' + d.rate + '% |');
+  });
+  L.push('');
+
+  L.push('## 问题清单', '');
+  var n = 0;
+  devices.forEach(function (d) {
+    var probs = act.filter(function (r) {
+      var e = merged[d.id] && merged[d.id][r.id];
+      return e && (e.status === 'fail' || e.status === 'warn');
+    });
+    if (!probs.length) return;
+    L.push('### ' + d.name + '（' + typeLabel(d.type) + '）', '');
+    probs.forEach(function (r) {
+      n++;
+      var e = merged[d.id][r.id];
+      var m = (manual && manual[d.id] && manual[d.id][r.id]) || {};
+      L.push((n) + '. **' + r.name + '**　`' + ruleStandard(r) + '`');
+      L.push('   - 判定：' + STATUS_LABEL[e.status] + (e.overridden ? '（人工改判）' : ''));
+      if (e.value) L.push('   - 当前值：`' + e.value + '`');
+      if (e.hits && e.hits.length) {
+        L.push('   - 命中配置：`' + String(e.hits[0].text).slice(0, 120) + '`');
+      }
+      if (m.issue) L.push('   - 问题描述：' + m.issue);
+      if (m.evidence) L.push('   - 证据：' + m.evidence);
+      L.push('   - 整改建议：' + (r.advice || '—'));
+      L.push('');
+    });
+  });
+  if (!n) L.push('本次未发现不合规项。', '');
+
+  L.push('## 留证与人工记录', '');
+  var recs = [];
+  devices.forEach(function (d) {
+    act.forEach(function (r) {
+      var m = (manual && manual[d.id] && manual[d.id][r.id]) || {};
+      if (m.override || m.evidence || m.issue) {
+        var e = merged[d.id] && merged[d.id][r.id];
+        recs.push({ dev: d.name, rule: r.name, std: ruleStandard(r),
+          status: e ? STATUS_LABEL[e.status] : '—',
+          override: m.override ? '是' : '',
+          evidence: m.evidence || '', issue: m.issue || '' });
+      }
+    });
+  });
+  if (!recs.length) {
+    L.push('本次没有人工改判、证据或问题记录。', '');
+  } else {
+    L.push('| 设备 | 检查项 | 条款 | 结论 | 改判 | 证据 | 问题 |', '|---|---|---|---|---|---|---|');
+    recs.forEach(function (x) {
+      L.push('| ' + x.dev + ' | ' + x.rule + ' | ' + x.std + ' | ' + x.status + ' | '
+        + (x.override || '') + ' | ' + (x.evidence || '') + ' | ' + (x.issue || '') + ' |');
+    });
+    L.push('');
+  }
+
+  L.push('## 说明', '');
+  L.push('本报告由配置文本自动比对 + 人工核查生成。自动判定基于正则启发式匹配，');
+  L.push('「需人工核」项必须登录设备确认；「不合规」建议抽样复核命中行。');
+  return L.join('\n');
+}
+
+/* 导出兼容"清单式工具"的 JSON（含 device 字段，便于回灌） */
+function buildChecklistJson(devices, rules, merged, manual, stats, meta) {
+  meta = meta || {};
+  var act = rules.filter(function (r) { return r.enabled !== false; });
+  var results = [];
+  var counts = { pass: 0, fail: 0, na: 0, pending: 0, warn: 0, manual: 0, info: 0, '': 0 };
+  devices.forEach(function (d) {
+    act.forEach(function (r) {
+      var e = merged[d.id] && merged[d.id][r.id];
+      var st = e ? e.status : '';
+      counts[st] = (counts[st] || 0) + 1;
+      var m = (manual && manual[d.id] && manual[d.id][r.id]) || {};
+      results.push({
+        device: d.name,
+        deviceType: typeLabel(d.type),
+        categoryId: r.cat,
+        categoryName: r.cat,
+        itemId: r.id,
+        title: r.name,
+        standard: ruleStandard(r),
+        evidenceRequired: ruleEvidenceRequired(r),
+        status: st,
+        statusLabel: STATUS_LABEL[st] || '',
+        autoStatus: e && e.autoStatus ? e.autoStatus : (e ? e.status : ''),
+        overridden: !!(e && e.overridden),
+        value: e && e.value ? e.value : '',
+        issue: m.issue || '',
+        evidence: m.evidence || '',
+        advice: r.advice || ''
+      });
+    });
+  });
+  var total = results.length;
+  return {
+    templateId: 'csai-device-baseline',
+    templateName: '安全设备巡检基线比对台',
+    templateVersion: '1.0',
+    operator: meta.operator || '',
+    cycle: meta.cycle || '',
+    devices: devices.map(function (d) { return { name: d.name, type: typeLabel(d.type) }; }),
+    startedAt: meta.startedAt || null,
+    finishedAt: new Date().toISOString(),
+    summary: {
+      total: total, pass: counts.pass, fail: counts.fail, na: counts.na,
+      pending: counts.pending, warn: counts.warn, manual: counts.manual,
+      notStarted: 0, completionRate: total ? Math.round((total - counts.na) * 100 / total) : 0
+    },
+    results: results
+  };
+}
+
+/* 解析外部清单 JSON：兼容 categories[] 模板 / results[] 结果 / items[] 简化结构 */
+function parseChecklistJson(obj) {
+  var out = { operator: obj.operator || '', cycle: obj.cycle || '', items: [] };
+  function push(cat, it) {
+    out.items.push({
+      id: String(it.id || it.itemId || ('imp-' + (out.items.length + 1))),
+      title: String(it.title || it.name || ''),
+      cat: String(cat || it.categoryName || '人工核查项'),
+      standard: String(it.standard || ''),
+      evidenceRequired: !!it.evidenceRequired,
+      description: String(it.description || ''),
+      hint: String(it.hint || ''),
+      status: String(it.status || ''),
+      evidence: String(it.evidence || ''),
+      issue: String(it.issue || ''),
+      /* 设备名：支持 device / deviceName / host / 主机名 几种常见写法 */
+      device: String(it.device || it.deviceName || it.host || it.hostname || it.资产 || '')
+    });
+  }
+  if (Array.isArray(obj.categories)) {
+    obj.categories.forEach(function (c) { (c.items || []).forEach(function (it) { push(c.name, it); }); });
+  }
+  if (Array.isArray(obj.results)) {
+    obj.results.forEach(function (r) { push(r.categoryName, r); });
+  }
+  if (Array.isArray(obj.items)) {
+    obj.items.forEach(function (it) { push(it.cat, it); });
+  }
+  out.items = out.items.filter(function (x) { return x.title; });
+  return out;
+}
+
+/* 按设备把清单条目分组：带 device 的各自成组，不带的全部归到 fallback 那一台 */
+function groupChecklistByDevice(items, fallbackName) {
+  var groups = [], byName = {};
+  (items || []).forEach(function (it) {
+    var name = String(it.device || '').trim() || String(fallbackName || '').trim() || '未命名设备';
+    if (!byName[name]) {
+      byName[name] = { name: name, items: [] };
+      groups.push(byName[name]);
+    }
+    byName[name].items.push(it);
+  });
+  return groups;
+}
+
+/* 把外部清单项转成"人工核查规则"；deviceIds 可以是字符串或数组，表示该规则适用的设备 */
+function checklistItemsToRules(items, deviceIds, prefix) {
+  var ids = null;
+  if (deviceIds) ids = Array.isArray(deviceIds) ? deviceIds.slice() : [deviceIds];
+  return items.map(function (it, i) {
+    return {
+      id: (prefix || 'chk') + '-' + (it.id || (i + 1)),
+      name: it.title,
+      cat: it.cat || '人工核查项',
+      level: 'medium',
+      pass: 'manual',
+      detect: [],
+      whenNoHit: 'manual',
+      standard: it.standard || '外部清单',
+      evidenceRequired: it.evidenceRequired,
+      description: it.description || '',
+      advice: it.hint || it.description || '依据清单要求人工核查并留证',
+      devices: ids ? ids.slice() : null,   /* 每条规则独立一份，避免共享数组被一起改掉 */
+      enabled: true,
+      builtin: false,
+      imported: true
+    };
+  });
+}
+
+/* ===================== CORE END ===================== */
+
+/* ===================== UI ===================== */
+var state = { devices: [], rules: [], results: null, stats: null, customRules: [] };
+var seqDev = 0;
+
+function $(id) { return document.getElementById(id); }
+function esc2(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function toast(msg, isErr) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (isErr ? ' err' : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function () { t.className = 'toast'; }, 2600);
+}
+document.querySelectorAll('.steps button').forEach(function (b) {
+  b.addEventListener('click', function () { goStep(parseInt(b.dataset.step, 10)); });
+});
+function goStep(n) {
+  document.querySelectorAll('.steps button').forEach(function (b) {
+    b.classList.toggle('on', parseInt(b.dataset.step, 10) === n);
+  });
+  document.querySelectorAll('section').forEach(function (s) { s.classList.toggle('on', s.id === 'p' + n); });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function activeRules() {
+  return state.rules.filter(function (r) { return r.enabled !== false; });
+}
+
+/* ---------- 设备管理 ---------- */
+function markDirty() {
+  // 设备增删改都要落盘；saveState 定义在后面（IIFE 内），通过 window 暴露
+  try { if (window.__saveState) window.__saveState(); } catch (e) { }
+}
+function addDevice(name, type, text, open) {
+  state.devices.push({ id: 'd' + (++seqDev), name: name || ('设备' + seqDev), type: type || 'fw', text: text || '' });
+  renderDevices(open);
+  markDirty();
+}
+function renderDevices(keepOpen) {
+  var box = $('devList');
+  if (!state.devices.length) {
+    box.innerHTML = '<div class="mini" style="padding:14px;text-align:center">还没有设备，点上面「添加设备」或「载入示例」</div>';
+    $('devInfo').textContent = '';
+    return;
+  }
+  box.innerHTML = state.devices.map(function (d) {
+    var lines = d.text ? d.text.split(/\r?\n/).length : 0;
+    return '<div class="dev' + (d._open ? ' open' : '') + '" data-id="' + d.id + '">'
+      + '<div class="dev-head">'
+      + '<input type="text" class="dev-name" value="' + esc2(d.name) + '" placeholder="设备名称/IP">'
+      + '<select class="dev-type">'
+      + '<option value="fw"' + (d.type === 'fw' ? ' selected' : '') + '>防火墙</option>'
+      + '<option value="waf"' + (d.type === 'waf' ? ' selected' : '') + '>WAF</option>'
+      + '<option value="ips"' + (d.type === 'ips' ? ' selected' : '') + '>IPS/IDS</option>'
+      + '<option value="audit"' + (d.type === 'audit' ? ' selected' : '') + '>日志审计</option>'
+      + '<option value="other"' + (d.type === 'other' ? ' selected' : '') + '>其他</option>'
+      + '</select>'
+      + '<span class="cnt">' + lines + ' 行</span>'
+      + '<button class="btn ghost sm dev-toggle">' + (d._open ? '收起配置' : '展开配置') + '</button>'
+      + '<button class="btn ghost sm dev-del">删除</button>'
+      + '</div>'
+      + '<div class="dev-body"><textarea class="dev-text" placeholder="把该设备的配置或巡检回显粘到这里">'
+      + esc2(d.text) + '</textarea></div>'
+      + '</div>';
+  }).join('');
+
+  $('devInfo').textContent = '共 ' + state.devices.length + ' 台设备';
+
+  box.querySelectorAll('.dev').forEach(function (el) {
+    var id = el.dataset.id;
+    var dev = state.devices.find(function (x) { return x.id === id; });
+    el.querySelector('.dev-name').addEventListener('input', function () { dev.name = this.value; markDirty(); });
+    el.querySelector('.dev-type').addEventListener('change', function () { dev.type = this.value; markDirty(); });
+    el.querySelector('.dev-text').addEventListener('input', function () {
+      dev.text = this.value;
+      el.querySelector('.cnt').textContent = this.value.split(/\r?\n/).length + ' 行';
+      markDirty();
+    });
+    el.querySelector('.dev-toggle').addEventListener('click', function () {
+      dev._open = !dev._open;
+      el.classList.toggle('open', dev._open);
+      this.textContent = dev._open ? '收起配置' : '展开配置';
+    });
+    el.querySelector('.dev-del').addEventListener('click', function () {
+      state.devices = state.devices.filter(function (x) { return x.id !== id; });
+      renderDevices();
+      markDirty();
+    });
+  });
+}
+
+$('btnAddDev').addEventListener('click', function () { addDevice('', 'fw', '', true); });
+$('btnClear').addEventListener('click', function () {
+  state.devices = []; state.results = null; state.auto = null;
+  state.manual = {};
+  renderDevices(); markDirty(); toast('已清空');
+});
+
+$('btnImportFiles').addEventListener('click', function () { $('fileInput').click(); });
+$('fileInput').addEventListener('change', function () {
+  var files = Array.prototype.slice.call(this.files || []);
+  if (!files.length) return;
+  var done = 0;
+  files.forEach(function (f) {
+    var r = new FileReader();
+    r.onload = function () {
+      var txt = String(r.result || '');
+      var multi = splitMultiDevice(txt);
+      if (multi) {
+        multi.forEach(function (m) { addDevice(m.name, guessType(m.name + m.text), m.text, false); });
+      } else {
+        var name = f.name.replace(/\.[^.]+$/, '');
+        addDevice(name, guessType(name + txt), txt, false);
+      }
+      done++;
+      if (done === files.length) {
+        renderDevices();
+        markDirty();
+        toast('已导入 ' + done + ' 个文件，共 ' + state.devices.length + ' 台设备');
+      }
+    };
+    r.readAsText(f, 'utf-8');
+  });
+  this.value = '';
+});
+
+function guessType(s) {
+  var t = String(s || '').toLowerCase();
+  if (/waf|web应用防火墙|应用防护/.test(t)) return 'waf';
+  if (/ips|ids|入侵检测|入侵防御/.test(t)) return 'ips';
+  if (/审计|logaudit|soc|日志/.test(t)) return 'audit';
+  if (/firewall|防火墙|usg|asa|srx|af\b/.test(t)) return 'fw';
+  return 'other';
+}
+
+$('btnImportMerged').addEventListener('click', function () {
+  var txt = prompt('粘贴合并文本，用 "==== 设备名 ====" 分隔多台设备：');
+  if (!txt) return;
+  var multi = splitMultiDevice(txt);
+  if (!multi) { addDevice('设备' + (state.devices.length + 1), guessType(txt), txt, true); }
+  else { multi.forEach(function (m) { addDevice(m.name, guessType(m.name + m.text), m.text, false); }); renderDevices(); }
+  toast('已导入');
+});
+
+var DEMO_FW = [
+  '# 华为 USG6000 防火墙（示例，含多处不合规）',
+  'sysname FW-HQ-01',
+  'telnet server enable',
+  'ip http enable',
+  'ip https enable',
+  'snmp-agent community read public',
+  'snmp-agent sys-info version v2c',
+  'info-center loghost 10.10.20.31',
+  'ntp-service unicast-server 10.10.20.5',
+  'local-user admin password irreversible-cipher $1c$abcdef',
+  'local-user admin service-type telnet http',
+  'acl number 2000',
+  ' rule 5 permit source 10.10.0.0 0.0.255.255',
+  'security-policy',
+  ' rule name allow-any',
+  '  source-zone trust',
+  '  destination-zone untrust',
+  '  action permit',
+  ' rule name deny-all',
+  '  action deny'
+].join('\n');
+
+var DEMO_WAF = [
+  '# 深信服 AF / WAF（示例，防护仅告警 + 弱团体字）',
+  'hostname WAF-DMZ-01',
+  'admin-source 10.10.0.0/16',
+  'ssh server enable',
+  'web-manager https enable',
+  'snmp community = private',
+  'syslog server 10.10.20.31 port 514',
+  'ntp server 10.10.20.5',
+  'password-policy min-length 8',
+  'protection mode: alert',
+  'signature version: 2025.11.03',
+  'license expire: 2027-06-30',
+  'ha enable',
+  'ftp server enable'
+].join('\n');
+
+var DEMO_AUDIT = [
+  '# Linux 底座日志审计设备（示例，时间同步缺失）',
+  'PermitRootLogin yes',
+  'PasswordAuthentication no',
+  'MaxAuthTries 3',
+  'rocommunity public',
+  '*.*    @10.10.20.31:514',
+  'telnet disable = yes',
+  '# ntp 未配置',
+  'audit enable',
+  'cmd-accounting enable'
+].join('\n');
+
+$('btnDemo').addEventListener('click', function () {
+  /* 已有设备时先确认，避免误点把正在做的巡检连同核查记录一起清掉 */
+  if (state.devices.length) {
+    if (!confirm('载入示例会清空当前 ' + state.devices.length + ' 台设备及其核查记录，确定继续？')) return;
+    state.manual = {};
+    state.auto = null;
+  }
+  state.devices = [];
+  seqDev = 0;
+  addDevice('FW-HQ-01', 'fw', DEMO_FW, false);
+  addDevice('WAF-DMZ-01', 'waf', DEMO_WAF, false);
+  addDevice('AUDIT-LOG-01', 'audit', DEMO_AUDIT, false);
+  renderDevices();
+  toast('已载入 3 台示例设备');
+});
+
+/* ---------- 规则 ---------- */
+function initRules() {
+  state.rules = BUILTIN_RULES.map(function (r) {
+    var c = JSON.parse(JSON.stringify(r));
+    c.enabled = true;
+    c.builtin = true;
+    return c;
+  });
+  renderRules();
+}
+function renderRules() {
+  var rows = activeRules().length;
+  var tbl = $('ruleTable');
+  var html = '<thead><tr><th style="width:52px">启用</th><th style="width:120px">类别</th><th>检查项</th>'
+    + '<th style="width:70px">级别</th><th style="width:80px">判定方式</th><th style="width:60px">来源</th></tr></thead><tbody>';
+  state.rules.forEach(function (r) {
+    html += '<tr>'
+      + '<td><input type="checkbox" class="rule-en" data-id="' + r.id + '"' + (r.enabled !== false ? ' checked' : '') + '></td>'
+      + '<td>' + esc2(r.cat) + '</td>'
+      + '<td>' + esc2(r.name) + '<div class="mini">' + esc2(r.advice || '') + '</div></td>'
+      + '<td><span class="ruletag lv-' + r.level + '">' + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level) + '</span></td>'
+      + '<td class="mini">' + ({ found: '命中=合规', absent: '命中=不合规', capture: '看捕获值', info: '仅展示', manual: '人工' }[r.pass] || r.pass) + '</td>'
+      + '<td class="mini">' + (r.builtin ? '内置' : '自定义') + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody>';
+  tbl.innerHTML = html;
+  tbl.querySelectorAll('.rule-en').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      var r = state.rules.find(function (x) { return x.id === cb.dataset.id; });
+      if (r) r.enabled = cb.checked;
+      $('ruleInfo').textContent = '启用 ' + activeRules().length + ' / ' + state.rules.length + ' 条';
+    });
+  });
+  $('ruleInfo').textContent = '启用 ' + activeRules().length + ' / ' + state.rules.length + ' 条';
+}
+$('btnAllOn').addEventListener('click', function () { state.rules.forEach(function (r) { r.enabled = true; }); renderRules(); });
+$('btnAllOff').addEventListener('click', function () { state.rules.forEach(function (r) { r.enabled = false; }); renderRules(); });
+$('btnExportRules').addEventListener('click', function () {
+  download('巡检规则-' + stamp() + '.json', JSON.stringify(state.rules.map(function (r) {
+    var o = JSON.parse(JSON.stringify(r)); delete o.builtin; return o;
+  }), null, 2), 'application/json');
+});
+$('btnImportRules').addEventListener('click', function () { $('ruleFile').click(); });
+$('ruleFile').addEventListener('change', function () {
+  if (!this.files.length) return;
+  var r = new FileReader();
+  r.onload = function () {
+    try {
+      var arr = JSON.parse(String(r.result));
+      if (!Array.isArray(arr)) throw new Error('应为数组');
+      arr.forEach(function (x) { x.enabled = x.enabled !== false; x.builtin = false; });
+      state.rules = state.rules.concat(arr);
+      renderRules();
+      toast('已导入 ' + arr.length + ' 条规则');
+    } catch (e) { toast('规则解析失败：' + e.message, true); }
+  };
+  r.readAsText(this.files[0], 'utf-8');
+  this.value = '';
+});
+
+$('btnApplyCustom').addEventListener('click', function () {
+  var txt = $('customRules').value.trim();
+  if (!txt) { toast('先填写 JSON'); return; }
+  try {
+    var arr = JSON.parse(txt);
+    if (!Array.isArray(arr)) throw new Error('应为 JSON 数组');
+    arr.forEach(function (x) {
+      if (!x.id || !x.name) throw new Error('每条规则至少要有 id 和 name');
+      x.enabled = true; x.builtin = false;
+      state.rules = state.rules.filter(function (y) { return y.id !== x.id; });
+      state.rules.push(x);
+    });
+    renderRules();
+    $('customInfo').textContent = '已应用 ' + arr.length + ' 条自定义规则';
+    toast('自定义规则已生效');
+  } catch (e) {
+    toast('解析失败：' + e.message, true);
+  }
+});
+$('btnResetCustom').addEventListener('click', function () {
+  state.rules = state.rules.filter(function (r) { return r.builtin; });
+  $('customRules').value = '';
+  $('customInfo').textContent = '已清空自定义规则';
+  renderRules();
+});
+
+/* ---------- 比对 ---------- */
+$('btnNext2').addEventListener('click', function () { goStep(2); });
+
+$('btnRun').addEventListener('click', function () {
+  var devs = state.devices.filter(function (d) { return d.name && String(d.text || '').trim(); });
+  if (!devs.length) { toast('至少要有 1 台设备且填了配置内容', true); return; }
+  var rules = activeRules();
+  if (!rules.length) { toast('没有启用任何检查项', true); return; }
+
+  state.results = evaluateAll(devs, state.rules);
+  state.stats = computeStats(devs, state.rules, state.results);
+  $('runInfo').textContent = '已比对 ' + devs.length + ' 台 × ' + rules.length + ' 项';
+  goStep(3);
+  renderStats();
+  renderView();
+  toast('比对完成');
+});
+
+/* ---------- 结果渲染 ---------- */
+function renderStats() {
+  var s = state.stats;
+  var devs = state.devices;
+  var okDev = s.perDev.filter(function (d) { return d.fail === 0; }).length;
+  var avg = s.perDev.length ? Math.round(s.perDev.reduce(function (a, d) { return a + d.rate; }, 0) / s.perDev.length) : 0;
+  $('statBox').innerHTML =
+    '<div class="k info"><b>' + s.perDev.length + '</b><span>设备</span></div>'
+    + '<div class="k info"><b>' + activeRules().length + '</b><span>检查项</span></div>'
+    + '<div class="k err"><b>' + s.totalFail + '</b><span>不合规项合计</span></div>'
+    + '<div class="k ok"><b>' + okDev + '/' + s.perDev.length + '</b><span>零问题设备</span></div>'
+    + '<div class="k warn"><b>' + avg + '%</b><span>平均合规率</span></div>';
+}
+
+function statusCell(devId, ruleId) {
+  var rr = state.results[devId] && state.results[devId][ruleId];
+  if (!rr) return '<td class="cell s-na">—</td>';
+  var mark = { pass: '✓', fail: '✗', warn: '!', manual: '?', info: 'i', na: '—' }[rr.status] || '—';
+  var txt = mark + (rr.value ? ' ' + rr.value : '');
+  return '<td class="cell s-' + rr.status + '" data-dev="' + devId + '" data-rule="' + ruleId
+    + '" title="' + esc2(STATUS_LABEL[rr.status] + '：' + (rr.reason || '')) + '">' + esc2(txt) + '</td>';
+}
+
+function visibleRules() {
+  var lv = $('filterLevel').value;
+  var kw = $('search').value.trim().toLowerCase();
+  var hidePass = $('hidePass').checked;
+  return activeRules().filter(function (r) {
+    if (lv === 'high' && r.level !== 'high') return false;
+    if (lv === 'highmed' && r.level !== 'high' && r.level !== 'medium') return false;
+    if (kw && (r.name + r.cat + (r.advice || '')).toLowerCase().indexOf(kw) < 0) return false;
+    if (hidePass) {
+      var anyBad = state.devices.some(function (d) {
+        var rr = state.results[d.id] && state.results[d.id][r.id];
+        return rr && (rr.status === 'fail' || rr.status === 'warn');
+      });
+      if (!anyBad) return false;
+    }
+    return true;
+  });
+}
+
+function renderView() {
+  if (!state.results) return;
+  var mode = $('viewMode').value;
+  $('matrixView').style.display = mode === 'matrix' ? 'block' : 'none';
+  $('problemsView').style.display = mode === 'problems' ? 'block' : 'none';
+  $('byRuleView').style.display = mode === 'byrule' ? 'block' : 'none';
+  if (mode === 'matrix') renderMatrix();
+  else if (mode === 'problems') renderProblems();
+  else renderByRule();
+}
+
+function renderMatrix() {
+  var devs = state.devices;
+  var rules = visibleRules();
+  var kw = $('search').value.trim().toLowerCase();
+  if (kw) devs = devs.filter(function (d) { return d.name.toLowerCase().indexOf(kw) >= 0; }) ;
+  if (!devs.length) devs = state.devices;
+
+  var html = '<thead><tr><th>检查项 \\ 设备</th>';
+  devs.forEach(function (d) { html += '<th>' + esc2(d.name) + '<div class="mini">' + typeLabel(d.type) + '</div></th>'; });
+  html += '</tr></thead><tbody>';
+
+  var lastCat = '';
+  rules.forEach(function (r) {
+    html += '<tr>';
+    html += '<th>' + esc2(r.name) + '<span class="ruletag lv-' + r.level + '">'
+      + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level)
+      + '</span><div class="mini">' + esc2(r.cat) + '</div></th>';
+    devs.forEach(function (d) { html += statusCell(d.id, r.id); });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  $('matrix').innerHTML = html;
+
+  $('matrix').querySelectorAll('td.cell').forEach(function (td) {
+    td.addEventListener('click', function () { showDetail(td.dataset.dev, td.dataset.rule); });
+  });
+}
+
+function renderProblems() {
+  var devs = state.devices;
+  var rules = activeRules();
+  var html = '';
+  devs.forEach(function (d) {
+    var rec = state.results[d.id] || {};
+    var probs = rules.filter(function (r) { return rec[r.id] && (rec[r.id].status === 'fail' || rec[r.id].status === 'warn'); });
+    var st = state.stats.perDev.find(function (x) { return x.id === d.id; }) || { rate: 0, pass: 0, fail: 0 };
+    html += '<div style="margin-bottom:18px"><b style="font-size:14px">' + esc2(d.name)
+      + '</b> <span class="mini">' + typeLabel(d.type) + ' · 合规率 ' + st.rate + '% · 不合规 '
+      + st.fail + ' 项</span>';
+    if (!probs.length) {
+      html += '<div class="mini" style="padding:8px 0">✓ 本次未发现不合规项</div></div>';
+      return;
+    }
+    html += '<table class="rules" style="margin-top:8px"><thead><tr><th style="width:56px">级别</th><th style="width:190px">检查项</th>'
+      + '<th>命中配置</th><th style="width:42%">整改建议</th></tr></thead><tbody>';
+    probs.forEach(function (r) {
+      var rr = rec[r.id];
+      var hits = (rr.hits || []).slice(0, 3).map(function (h) { return '<code>' + esc2(h.text) + '</code>'; }).join('<br>');
+      html += '<tr><td><span class="ruletag lv-' + r.level + '">'
+        + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level) + '</span></td>'
+        + '<td>' + esc2(r.name) + (rr.status === 'warn' ? ' <span class="mini">(需关注)</span>' : '') + '</td>'
+        + '<td class="tl">' + (hits || '—') + '</td>'
+        + '<td>' + esc2(r.advice || '') + '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+  $('problemsView').innerHTML = html;
+}
+
+function renderByRule() {
+  var rows = state.stats.perRule.slice().sort(function (a, b) {
+    return b.fail - a.fail || (SEV_ORDER[b.level] || 0) - (SEV_ORDER[a.level] || 0);
+  });
+  var html = '<table class="rules"><thead><tr><th style="width:190px">检查项</th><th style="width:110px">类别</th>'
+    + '<th style="width:60px">级别</th><th style="width:120px">不合规设备</th><th>影响设备</th></tr></thead><tbody>';
+  rows.forEach(function (x) {
+    var names = [];
+    state.devices.forEach(function (d) {
+      var rr = state.results[d.id] && state.results[d.id][x.id];
+      if (rr && rr.status === 'fail') names.push(d.name);
+    });
+    var rate = state.devices.length ? Math.round(x.fail * 100 / state.devices.length) : 0;
+    html += '<tr><td>' + esc2(x.name) + '</td><td class="mini">' + esc2(x.cat) + '</td>'
+      + '<td><span class="ruletag lv-' + x.level + '">'
+      + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[x.level] || x.level) + '</span></td>'
+      + '<td><b style="color:' + (rate > 50 ? '#ff7070' : '#fbbf24') + '">' + x.fail + '/' + state.devices.length
+      + '</b> <span class="mini">' + rate + '%</span></td>'
+      + '<td class="mini">' + esc2(names.join('、') || '—') + '</td></tr>';
+  });
+  html += '</tbody></table>';
+  $('byRuleView').innerHTML = html;
+}
+
+function showDetail(devId, ruleId) {
+  var d = state.devices.find(function (x) { return x.id === devId; });
+  var r = state.rules.find(function (x) { return x.id === ruleId; });
+  var rr = state.results[devId] && state.results[devId][ruleId];
+  if (!d || !r || !rr) return;
+  var box = $('detail');
+  var hitHtml = (rr.hits && rr.hits.length)
+    ? rr.hits.slice(0, 8).map(function (h) { return '<pre>' + esc2(h.text) + '</pre>'; }).join('')
+    : '<div class="mini">没有匹配到任何配置行</div>';
+  box.innerHTML = '<h3>' + esc2(r.name) + ' · ' + esc2(d.name)
+    + ' <span class="ruletag lv-' + r.level + '">' + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level) + '</span>'
+    + ' <span class="mini">' + esc2(r.cat) + '</span></h3>'
+    + '<div class="tl">判定：<b>' + STATUS_LABEL[rr.status] + '</b>　' + esc2(rr.reason || '')
+    + (rr.value ? '　当前值：<code>' + esc2(rr.value) + '</code>' : '') + '</div>'
+    + '<div style="margin-top:8px" class="mini">命中的原始配置行（共 ' + ((rr.hits || []).length) + ' 处，最多显示 8 处）：</div>'
+    + hitHtml
+    + '<div class="note" style="margin-top:10px"><b>整改建议：</b>' + esc2(r.advice || '—') + '</div>'
+    + '<button class="btn ghost sm" onclick="document.getElementById(\'detail\').style.display=\'none\'">关闭</button>';
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+$('viewMode').addEventListener('change', renderView);
+$('filterLevel').addEventListener('change', renderView);
+$('hidePass').addEventListener('change', renderView);
+$('search').addEventListener('input', function () {
+  clearTimeout(window.__sTid);
+  window.__sTid = setTimeout(renderView, 300);
+});
+
+/* ---------- 导出 ---------- */
+function stamp() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+}
+function download(name, content, mime) {
+  var blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+$('btnCsv').addEventListener('click', function () {
+  if (!state.results) { toast('先做一次比对', true); return; }
+  var csv = buildMatrixCsv(state.devices, state.rules, state.results);
+  download('巡检矩阵-' + stamp() + '.csv', '\uFEFF' + csv, 'text/csv');
+  toast('CSV 已导出');
+});
+
+$('btnReport').addEventListener('click', function () {
+  if (!state.results) { toast('先做一次比对', true); return; }
+  var mask = $('maskOn').checked;
+  var html = buildReportHtml(state.devices, state.rules, state.results, state.stats, { mask: mask });
+  download('巡检报告-' + stamp() + '.html', html, 'text/html');
+  toast('巡检报告已导出' + (mask ? '（已脱敏）' : ''));
+});
+
+/* ---------- 启动 ---------- */
+initRules();
+renderDevices();
+
+/* ===================================================================
+   人工核查层（覆盖在自动判定之上）
+   =================================================================== */
+(function () {
+  var LS_KEY = 'csai_bx_state_v1';
+
+  state.manual = state.manual || {};        /* devId -> ruleId -> {override, evidence, issue} */
+  state.meta = state.meta || { operator: '', cycle: '', startedAt: null };
+  state.auto = state.auto || null;          /* 自动判定原始快照 */
+
+  function getMan(devId, ruleId) {
+    var a = state.manual[devId] || {};
+    return a[ruleId] || {};
+  }
+  function ensureMan(devId, ruleId) {
+    if (!state.manual[devId]) state.manual[devId] = {};
+    if (!state.manual[devId][ruleId]) state.manual[devId][ruleId] = { override: '', evidence: '', issue: '' };
+    return state.manual[devId][ruleId];
+  }
+  function countOverride() {
+    var n = 0;
+    Object.keys(state.manual).forEach(function (d) {
+      Object.keys(state.manual[d] || {}).forEach(function (k) {
+        if (state.manual[d][k] && state.manual[d][k].override) n++;
+      });
+    });
+    return n;
+  }
+
+  /* 统计（含待定 / 人工改判） */
+  function stats2(devices, rules, merged) {
+    var act = rules.filter(function (r) { return r.enabled !== false; });
+    var perDev = devices.map(function (d) {
+      var rec = merged[d.id] || {};
+      var c = { pass: 0, fail: 0, warn: 0, manual: 0, info: 0, na: 0, pending: 0 };
+      act.forEach(function (r) {
+        var s = rec[r.id] ? rec[r.id].status : 'na';
+        if (c[s] == null) s = 'na';
+        c[s]++;
+      });
+      var denom = c.pass + c.fail + c.warn + c.pending;
+      return {
+        id: d.id, name: d.name, type: d.type,
+        pass: c.pass, fail: c.fail, warn: c.warn, manual: c.manual,
+        info: c.info, na: c.na, pending: c.pending,
+        rate: denom ? Math.round(c.pass * 100 / denom) : 0
+      };
+    });
+    var perRule = act.map(function (r) {
+      var c = { fail: 0, pass: 0, manual: 0, na: 0, pending: 0 };
+      devices.forEach(function (d) {
+        var e = merged[d.id] && merged[d.id][r.id];
+        var s = e ? e.status : 'na';
+        if (c[s] == null) s = 'na';
+        c[s]++;
+      });
+      return { id: r.id, name: r.name, cat: r.cat, level: r.level,
+               fail: c.fail, pass: c.pass, manual: c.manual, na: c.na, pending: c.pending };
+    });
+    return {
+      perDev: perDev, perRule: perRule,
+      totalFail: perDev.reduce(function (s, x) { return s + x.fail; }, 0),
+      totalPending: perDev.reduce(function (s, x) { return s + x.pending; }, 0)
+    };
+  }
+
+  /* 重算合并视图，写回 state.results（让所有既有渲染自动用上人工改判） */
+  function refreshEff() {
+    if (!state.auto) state.auto = state.results || {};
+    state.results = mergeResults(state.devices, state.rules, state.auto, state.manual);
+    state.stats = stats2(state.devices, state.rules, state.results);
+    saveState();
+  }
+
+  /* ---------- 自动保存 ---------- */
+  var saveTid;
+  function saveState() {
+    clearTimeout(saveTid);
+    saveTid = setTimeout(function () {
+      try {        var payload = {
+          v: 1,
+          devices: state.devices.map(function (d) {
+            return { id: d.id, name: d.name, type: d.type, text: d.text };
+          }),
+          manual: state.manual,
+          meta: state.meta,
+          rules: state.rules.map(function (r) {
+            var o = JSON.parse(JSON.stringify(r));
+            delete o.builtin;
+            return o;
+          })
+        };
+        localStorage.setItem(LS_KEY, JSON.stringify(payload));
+        $('saveState').textContent = '已自动保存 ' + new Date().toLocaleTimeString('zh-CN');
+      } catch (e) {
+        $('saveState').textContent = '自动保存失败：配置太大超出浏览器存储上限，请用「导出配置包」备份';
+      }
+    }, 600);
+  }
+  /* 让外层的设备增删改（addDevice / renderDevices）也能触发落盘 */
+  window.__saveState = saveState;
+
+  function restoreState() {
+    var raw;
+    try { raw = localStorage.getItem(LS_KEY); } catch (e) { return false; }
+    if (!raw) return false;
+    try {
+      var p = JSON.parse(raw);
+      if (!p || !p.devices) return false;
+      state.devices = p.devices.map(function (d, i) {
+        return { id: d.id || ('d' + (i + 1)), name: d.name, type: d.type, text: d.text || '' };
+      });
+      seqDev = state.devices.length;
+      state.manual = p.manual || {};
+      state.meta = p.meta || { operator: '', cycle: '', startedAt: null };
+      if (p.rules && p.rules.length) {
+        state.rules = p.rules.map(function (r) { r.enabled = r.enabled !== false; return r; });
+      }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- 覆盖：单元格（支持待定 + 人工改判标记）---------- */
+  window.statusCell = function (devId, ruleId) {
+    var rr = state.results && state.results[devId] && state.results[devId][ruleId];
+    if (!rr) return '<td class="cell s-na">—</td>';
+    var mark = { pass: '✓', fail: '✗', warn: '!', manual: '?', info: 'i', na: '—', pending: '⏳' }[rr.status] || '—';
+    var txt = mark + (rr.value ? ' ' + rr.value : '');
+    var star = rr.overridden ? '<span class="ovr">*</span>' : '';
+    var tip = STATUS_LABEL[rr.status] || rr.status;
+    if (rr.overridden) tip += '（人工改判）';
+    if (rr.reason) tip += '：' + rr.reason;
+    return '<td class="cell s-' + rr.status + '" data-dev="' + devId + '" data-rule="' + ruleId
+      + '" title="' + esc2(tip) + '">' + esc2(txt) + star + '</td>';
+  };
+
+  /* ---------- 覆盖：详情面板（可改判 + 留证）---------- */
+  window.showDetail = function (devId, ruleId) {
+    var d = state.devices.find(function (x) { return x.id === devId; });
+    var r = state.rules.find(function (x) { return x.id === ruleId; });
+    var cur = state.results[devId] && state.results[devId][ruleId];
+    var auto = state.auto && state.auto[devId] ? state.auto[devId][ruleId] : null;
+    if (!d || !r || !cur) return;
+    var m = getMan(devId, ruleId);
+    var LV = { high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level;
+    var opts = [
+      ['', '跟随自动判定'],
+      ['pass', '通过'], ['fail', '不通过'], ['warn', '需关注'],
+      ['manual', '需人工核'], ['pending', '待定'], ['na', '不适用']
+    ];
+    var sel = '<select id="dvStatus">' + opts.map(function (o) {
+      return '<option value="' + o[0] + '"' + ((m.override || '') === o[0] ? ' selected' : '') + '>'
+        + o[1] + '</option>';
+    }).join('') + '</select>';
+
+    var hitHtml = (cur.hits && cur.hits.length)
+      ? cur.hits.slice(0, 8).map(function (h) { return '<pre>' + esc2(h.text) + '</pre>'; }).join('')
+      : '<div class="mini">没有匹配到任何配置行</div>';
+
+    var box = $('detail');
+    box.innerHTML = '<h3>' + esc2(r.name) + ' · ' + esc2(d.name)
+      + ' <span class="ruletag lv-' + r.level + '">' + LV + '</span>'
+      + ' <span class="mini">' + esc2(r.cat) + '</span></h3>'
+      + '<div class="stdline">' + esc2(ruleStandard(r)) + (ruleEvidenceRequired(r) ? '　· 必须留证' : '') + '</div>'
+      + '<div class="tl" style="margin-top:6px">自动判定：<b>' + (auto ? (STATUS_LABEL[auto.status] || auto.status) : '—')
+      + '</b>　生效判定：<b>' + (STATUS_LABEL[cur.status] || cur.status) + '</b>'
+      + (cur.overridden ? ' <span class="ovr" style="font-size:11px">（人工改判）</span>' : '')
+      + (cur.value ? '　当前值：<code>' + esc2(cur.value) + '</code>' : '') + '</div>'
+      + '<div style="margin-top:8px" class="mini">命中的原始配置行（共 ' + ((cur.hits || []).length) + ' 处，最多显示 8 处）：</div>'
+      + hitHtml
+      + '<div class="dform">'
+      + '<label>人工改判</label><div>' + sel + '</div>'
+      + '<label>证据 / 截图说明</label><div><textarea id="dvEvidence" placeholder="如：截图为 Web 管理界面 SNMP 配置页，团体字已改为强口令">' + esc2(m.evidence || '') + '</textarea></div>'
+      + '<label>问题描述</label><div><textarea id="dvIssue" placeholder="不通过时填写具体问题，会进报告的问题清单">' + esc2(m.issue || '') + '</textarea></div>'
+      + '</div>'
+      + '<div class="note" style="margin-top:8px"><b>整改建议：</b>' + esc2(r.advice || '—') + '</div>'
+      + '<div class="row" style="margin-top:4px"><button class="btn ghost sm" id="dvClose">关闭</button></div>';
+
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    $('dvStatus').addEventListener('change', function () {
+      var mm = ensureMan(devId, ruleId);
+      mm.override = this.value;
+      mm.updatedAt = new Date().toISOString();
+      refreshEff();
+      renderStats(); renderView();
+      showDetail(devId, ruleId);
+    });
+    ['dvEvidence', 'dvIssue'].forEach(function (id) {
+      $(id).addEventListener('change', function () {
+        var mm = ensureMan(devId, ruleId);
+        mm[id === 'dvEvidence' ? 'evidence' : 'issue'] = this.value;
+        mm.updatedAt = new Date().toISOString();
+        saveState();
+      });
+    });
+    $('dvClose').addEventListener('click', function () { box.style.display = 'none'; });
+  };
+
+  /* ---------- 覆盖：可见规则（新增"隐藏整行为不适用"）---------- */
+  window.visibleRules = function () {
+    var lv = $('filterLevel').value;
+    var kw = $('search').value.trim().toLowerCase();
+    var hidePass = $('hidePass').checked;
+    var hideNa = $('hideNa') ? $('hideNa').checked : true;
+    return activeRules().filter(function (r) {
+      if (lv === 'high' && r.level !== 'high') return false;
+      if (lv === 'highmed' && r.level !== 'high' && r.level !== 'medium') return false;
+      if (kw && (r.name + r.cat + (r.advice || '')).toLowerCase().indexOf(kw) < 0) return false;
+      var anyBad = false, anyApplicable = false;
+      state.devices.forEach(function (d) {
+        var e = state.results && state.results[d.id] && state.results[d.id][r.id];
+        if (!e) return;
+        if (e.status !== 'na') anyApplicable = true;
+        if (e.status === 'fail' || e.status === 'warn') anyBad = true;
+      });
+      if (hideNa && !anyApplicable) return false;
+      if (hidePass && !anyBad) return false;
+      return true;
+    });
+  };
+
+  /* ---------- 覆盖：统计卡片（补待定与改判计数）---------- */
+  window.renderStats = function () {
+    var s = state.stats;
+    var okDev = s.perDev.filter(function (d) { return d.fail === 0 && d.pending === 0; }).length;
+    var avg = s.perDev.length ? Math.round(s.perDev.reduce(function (a, d) { return a + d.rate; }, 0) / s.perDev.length) : 0;
+    $('statBox').innerHTML =
+      '<div class="k info"><b>' + s.perDev.length + '</b><span>设备</span></div>'
+      + '<div class="k info"><b>' + activeRules().length + '</b><span>检查项</span></div>'
+      + '<div class="k err"><b>' + s.totalFail + '</b><span>不合规合计</span></div>'
+      + '<div class="k warn"><b>' + (s.totalPending || 0) + '</b><span>待定</span></div>'
+      + '<div class="k ok"><b>' + okDev + '/' + s.perDev.length + '</b><span>零问题设备</span></div>'
+      + '<div class="k"><b>' + countOverride() + '</b><span>人工改判</span></div>'
+      + '<div class="k warn"><b>' + avg + '%</b><span>平均合规率</span></div>';
+  };
+
+  /* ---------- 覆盖：问题清单（显示条款 / 证据 / 改判）---------- */
+  window.renderProblems = function () {
+    var devs = state.devices;
+    var rules = activeRules();
+    var html = '';
+    devs.forEach(function (d) {
+      var rec = state.results[d.id] || {};
+      var probs = rules.filter(function (r) {
+        var e = rec[r.id];
+        return e && (e.status === 'fail' || e.status === 'warn' || e.status === 'pending');
+      });
+      var st = state.stats.perDev.find(function (x) { return x.id === d.id; }) || { rate: 0, fail: 0 };
+      html += '<div style="margin-bottom:18px"><b style="font-size:14px">' + esc2(d.name)
+        + '</b> <span class="mini">' + typeLabel(d.type) + ' · 合规率 ' + st.rate + '% · 不合规 '
+        + st.fail + ' 项</span>';
+      if (!probs.length) {
+        html += '<div class="mini" style="padding:8px 0">✓ 本次未发现不合规项</div></div>';
+        return;
+      }
+      html += '<table class="rules" style="margin-top:8px"><thead><tr><th style="width:52px">级别</th>'
+        + '<th style="width:170px">检查项</th><th>命中配置 / 证据 / 问题</th><th style="width:36%">整改建议</th></tr></thead><tbody>';
+      probs.forEach(function (r) {
+        var e = rec[r.id];
+        var m = getMan(d.id, r.id);
+        var hits = (e.hits || []).slice(0, 2).map(function (h) { return '<code>' + esc2(h.text) + '</code>'; }).join('<br>');
+        var extra = '';
+        if (m.issue) extra += '<div style="margin-top:4px">问题：' + esc2(m.issue) + '</div>';
+        if (m.evidence) extra += '<div style="margin-top:2px" class="mini">证据：' + esc2(m.evidence) + '</div>';
+        html += '<tr><td><span class="ruletag lv-' + r.level + '">'
+          + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[r.level] || r.level) + '</span></td>'
+          + '<td>' + esc2(r.name)
+          + (e.overridden ? ' <span class="ovr">*</span>' : '')
+          + '<div class="stdline">' + esc2(ruleStandard(r)) + '</div></td>'
+          + '<td class="tl">' + (hits || '—') + extra + '</td>'
+          + '<td>' + esc2(r.advice || '') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    $('problemsView').innerHTML = html;
+  };
+
+  /* ---------- 覆盖：按规则聚合 ---------- */
+  window.renderByRule = function () {
+    var rows = state.stats.perRule.slice().sort(function (a, b) {
+      return b.fail - a.fail || (SEV_ORDER[b.level] || 0) - (SEV_ORDER[a.level] || 0);
+    });
+    var html = '<table class="rules"><thead><tr><th style="width:170px">检查项</th><th style="width:100px">类别</th>'
+      + '<th style="width:56px">级别</th><th style="width:110px">不合规设备</th><th>影响设备</th></tr></thead><tbody>';
+    rows.forEach(function (x) {
+      var names = [];
+      state.devices.forEach(function (d) {
+        var e = state.results[d.id] && state.results[d.id][x.id];
+        if (e && e.status === 'fail') names.push(d.name);
+      });
+      var rate = state.devices.length ? Math.round(x.fail * 100 / state.devices.length) : 0;
+      html += '<tr><td>' + esc2(x.name) + '<div class="stdline">' + esc2(ruleStandard({ id: x.id }) ) + '</div></td>'
+        + '<td class="mini">' + esc2(x.cat) + '</td>'
+        + '<td><span class="ruletag lv-' + x.level + '">'
+        + ({ high: '高危', medium: '中危', low: '低危', info: '信息' }[x.level] || x.level) + '</span></td>'
+        + '<td><b style="color:' + (rate > 50 ? '#ff7070' : '#fbbf24') + '">' + x.fail + '/' + state.devices.length
+        + '</b> <span class="mini">' + rate + '%</span></td>'
+        + '<td class="mini">' + esc2(names.join('、') || '—') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    $('byRuleView').innerHTML = html;
+  };
+
+  /* ---------- 比对后接管：覆盖所有设备（含没有配置文本的清单设备）---------- */
+  $('btnRun').addEventListener('click', function () {
+    if (!state.devices.length) return;
+    /* 旧 handler 只算了有配置文本的设备，这里重算全部，避免清单列丢数据 */
+    state.auto = evaluateAll(state.devices, state.rules);
+    if (!state.meta.startedAt) state.meta.startedAt = new Date().toISOString();
+    refreshEff();
+    renderStats(); renderView();
+    $('runInfo').textContent = '已比对 ' + state.devices.length + ' 台 × ' + activeRules().length + ' 项';
+  });
+
+  /* ---------- 新按钮 ---------- */
+  $('operator').addEventListener('input', function () { state.meta.operator = this.value; saveState(); });
+  $('cycle').addEventListener('input', function () { state.meta.cycle = this.value; saveState(); });
+
+  $('btnMd').addEventListener('click', function () {
+    if (!state.results) { toast('先做一次比对', true); return; }
+    var md = buildMarkdownReport(state.devices, state.rules, state.results, state.stats, state.manual, state.meta);
+    if ($('maskOn').checked) md = maskSensitive(md);
+    download('巡检报告-' + stamp() + '.md', md, 'text/markdown');
+    toast('Markdown 已导出' + ($('maskOn').checked ? '（已脱敏）' : ''));
+  });
+
+  $('btnJson').addEventListener('click', function () {
+    if (!state.results) { toast('先做一次比对', true); return; }
+    var j = buildChecklistJson(state.devices, state.rules, state.results, state.manual, state.stats, state.meta);
+    download('巡检结果-' + stamp() + '.json', JSON.stringify(j, null, 2), 'application/json');
+    toast('JSON 已导出');
+  });
+
+  $('btnValidate').addEventListener('click', function () {
+    if (!state.results) { toast('先做一次比对', true); return; }
+    var v = validateChecklist(state.devices, state.rules, state.results, state.manual);
+    var box = $('detail');
+    var lines = [];
+    function sec(title, arr) {
+      if (!arr.length) return;
+      lines.push('• ' + title + '（' + arr.length + '）');
+      arr.slice(0, 12).forEach(function (x) { lines.push('  - ' + x.device + ' · ' + x.rule); });
+      if (arr.length > 12) lines.push('  - …还有 ' + (arr.length - 12) + ' 项');
+    }
+    sec('待定项未给出结论', v.notDone);
+    sec('不通过但未填问题描述', v.failNoIssue);
+    sec('需留证项未填证据', v.evidenceMissing);
+    box.innerHTML = '<h3>完整性校验</h3>'
+      + '<div class="vbox' + (v.total ? '' : ' ok') + '">'
+      + (v.total ? '发现 ' + v.total + ' 处待完善：' : '✅ 校验通过：所有项均有结论，需留证项均已填写证据。')
+      + (lines.length ? '<ul><li>' + lines.join('</li><li>').replace(/  - /g, '') + '</li></ul>' : '')
+      + '</div>'
+      + '<div class="row" style="margin-top:8px"><button class="btn ghost sm" id="dvClose2">关闭</button></div>';
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    $('dvClose2').addEventListener('click', function () { box.style.display = 'none'; });
+    toast(v.total ? ('校验：' + v.total + ' 处待完善') : '校验通过', !!v.total);
+  });
+
+  /* ---- 导入清单：核心逻辑抽成函数，文件选择只负责读盘后转交 ---- */
+  function importChecklistObject(obj, fileName, devName) {
+    var parsed = parseChecklistJson(obj || {});
+    if (!parsed.items.length) throw new Error('没有解析到检查项');
+
+    /* 设备名：手填 > JSON 里的 device 字段 > 模板名（带后缀） */
+    var typed = String(devName || '').trim();
+    var fallback = typed || ((obj.templateName || String(fileName || '清单').replace(/\.[^.]+$/, '')) + '（人工清单）');
+    var groups = groupChecklistByDevice(parsed.items, fallback);
+
+    var newRuleCount = 0, newDevCount = 0, reusedRule = 0;
+    groups.forEach(function (g) {
+      var dev = state.devices.find(function (d) { return d.name === g.name; });
+      if (!dev) {
+        addDevice(g.name, 'other', '', false);
+        dev = state.devices[state.devices.length - 1];
+        newDevCount++;
+      }
+      var rules = checklistItemsToRules(g.items, dev.id, 'chk');
+      rules.forEach(function (nr, i) {
+        /* 同一条检查项在多台设备间复用同一条规则，只累加设备范围 */
+        var existing = state.rules.find(function (x) { return x.id === nr.id; })
+          || state.rules.find(function (x) { return x.imported && x.name === nr.name; });
+        var ruleId;
+        if (existing) {
+          ruleId = existing.id;
+          if (!existing.devices) existing.devices = [];
+          if (existing.devices.indexOf(dev.id) < 0) existing.devices.push(dev.id);
+          existing.enabled = true;
+          reusedRule++;
+        } else {
+          state.rules.push(nr);
+          ruleId = nr.id;
+          newRuleCount++;
+        }
+        var it = g.items[i];
+        var mm = ensureMan(dev.id, ruleId);
+        if (it.status) mm.override = it.status;
+        if (it.evidence) mm.evidence = it.evidence;
+        if (it.issue) mm.issue = it.issue;
+        if (it.status || it.evidence || it.issue) mm.updatedAt = new Date().toISOString();
+      });
+    });
+
+    if (parsed.operator && !state.meta.operator) {
+      state.meta.operator = parsed.operator;
+      $('operator').value = parsed.operator;
+    }
+    if (parsed.cycle && !state.meta.cycle) {
+      state.meta.cycle = parsed.cycle;
+      $('cycle').value = parsed.cycle;
+    }
+    renderDevices(); renderRules();
+    state.auto = evaluateAll(state.devices, state.rules);
+    refreshEff(); renderStats(); goStep(3); renderView();
+
+    return {
+      devices: groups.length, items: parsed.items.length,
+      newDev: newDevCount, newRule: newRuleCount, reused: reusedRule,
+      deviceNames: groups.map(function (g) { return g.name; })
+    };
+  }
+  /* 暴露给脚本化调用 / 自动化测试 */
+  window.__importChecklist = importChecklistObject;
+
+  $('btnImportChk').addEventListener('click', function () { $('chkFile').click(); });
+  $('chkFile').addEventListener('change', function () {
+    if (!this.files.length) return;
+    var f = this.files[0], self = this;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var res = importChecklistObject(JSON.parse(String(r.result || '{}')), f.name, $('chkDevName').value);
+        $('chkDevName').value = '';
+        toast('导入完成：' + res.devices + ' 台设备、' + res.items + ' 个条目'
+          + (res.newDev ? '（新增 ' + res.newDev + ' 台）' : '')
+          + (res.reused ? '（复用 ' + res.reused + ' 条规则）' : ''));
+      } catch (e) { toast('导入失败：' + e.message, true); }
+    };
+    r.readAsText(f, 'utf-8');
+    self.value = '';
+  });
+
+  $('hideNa').addEventListener('change', renderView);
+
+  $('btnResetAll').addEventListener('click', function () {
+    if (!confirm('清空所有人工改判、证据与问题描述？（设备配置保留）')) return;
+    state.manual = {};
+    refreshEff(); renderStats(); renderView();
+    toast('已清空核查记录');
+  });
+
+  /* ---------- 配置包：把整批设备配置 + 核查记录 + 规则打包带走 ---------- */
+  $('btnSavePack').addEventListener('click', function () {
+    if (!state.devices.length) { toast('还没有设备可导出', true); return; }
+    var pack = {
+      v: 1,
+      kind: 'csai-device-pack',
+      exportedAt: new Date().toISOString(),
+      meta: state.meta,
+      devices: state.devices.map(function (d) {
+        return { name: d.name, type: d.type, text: d.text };
+      }),
+      manual: state.manual,
+      rules: state.rules.map(function (r) {
+        var o = JSON.parse(JSON.stringify(r));
+        delete o.builtin;
+        return o;
+      })
+    };
+    download('巡检配置包-' + stamp() + '.json', JSON.stringify(pack, null, 2), 'application/json');
+    toast('配置包已导出：' + pack.devices.length + ' 台设备');
+  });
+
+  $('btnLoadPack').addEventListener('click', function () { $('packFile').click(); });
+  $('packFile').addEventListener('change', function () {
+    if (!this.files.length) return;
+    var f = this.files[0], self = this;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var p = JSON.parse(String(r.result || '{}'));
+        if (!Array.isArray(p.devices) || !p.devices.length) throw new Error('不是有效的配置包（缺少 devices）');
+        if (state.devices.length
+            && !confirm('导入配置包会替换当前 ' + state.devices.length + ' 台设备及其核查记录，继续？')) {
+          return;
+        }
+        state.devices = p.devices.map(function (d, i) {
+          return {
+            id: 'd' + (i + 1),
+            name: d.name || ('设备' + (i + 1)),
+            type: d.type || 'other',
+            text: d.text || ''
+          };
+        });
+        seqDev = state.devices.length;
+        state.manual = p.manual || {};
+        state.meta = p.meta || { operator: '', cycle: '', startedAt: null };
+        if (Array.isArray(p.rules) && p.rules.length) {
+          state.rules = p.rules.map(function (x) {
+            x.enabled = x.enabled !== false;
+            x.builtin = false;
+            return x;
+          });
+        }
+        $('operator').value = state.meta.operator || '';
+        $('cycle').value = state.meta.cycle || '';
+        renderDevices(); renderRules();
+        state.auto = evaluateAll(state.devices, state.rules);
+        refreshEff(); renderStats(); renderView();
+        goStep(1);
+        toast('已导入配置包：' + state.devices.length + ' 台设备');
+      } catch (e) { toast('导入失败：' + e.message, true); }
+    };
+    r.readAsText(f, 'utf-8');
+    self.value = '';
+  });
+
+  /* ---------- 启动时恢复 ---------- */
+  if (restoreState()) {
+    renderDevices(); renderRules();
+    $('operator').value = state.meta.operator || '';
+    $('cycle').value = state.meta.cycle || '';
+    if (state.devices.some(function (d) { return String(d.text || '').trim(); })) {
+      state.auto = evaluateAll(state.devices, state.rules);
+      state.results = state.auto;
+      refreshEff();
+      renderStats();
+      $('saveState').textContent = '已恢复上次进度';
+    }
+  }
+
+  /* 首次进入时记录开始时间 */
+  if (!state.meta.startedAt) { state.meta.startedAt = new Date().toISOString(); saveState(); }
+})();
+</script>
+</body>
+</html>

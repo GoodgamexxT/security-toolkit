@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>初次 vs 复测 · 漏洞整改核对</title>
+<style>
+:root{
+  --bg:#0f1419;--bg2:#161d26;--bg3:#1d2733;--line:#2a3646;
+  --fg:#dde6f0;--fg2:#8fa3b8;--fg3:#5f7185;
+  --acc:#3d9df6;--acc2:#1f6fd0;
+  --ok:#2ecc71;--warn:#f39c12;--err:#e74c3c;--pur:#a48ef0;
+  --mono:"Cascadia Code",Consolas,"Courier New",monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding-bottom:50px}
+header{background:linear-gradient(135deg,#141c26,#1b2735);border-bottom:1px solid var(--line);
+  padding:16px 26px}
+h1{margin:0;font-size:18px;font-weight:600}
+h1 span{color:var(--acc)}
+.sub{color:var(--fg2);font-size:12.5px;margin-top:4px}
+main{max-width:1320px;margin:0 auto;padding:20px 26px}
+.card{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h2 small{font-weight:400;color:var(--fg3);font-size:12px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:960px){.split{grid-template-columns:1fr}}
+button.btn{background:var(--acc2);color:#fff;border:none;border-radius:6px;padding:9px 18px;
+  cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+button.btn:hover{background:var(--acc)}
+button.ghost{background:none;border:1px solid var(--line);color:var(--fg2)}
+button.ghost:hover{border-color:var(--acc);color:var(--acc);background:none}
+button.sm{padding:5px 11px;font-size:12px}
+textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--fg);
+  padding:9px 11px;font-family:var(--mono);font-size:11.5px;resize:vertical;outline:none}
+textarea:focus{border-color:var(--acc)}
+select,input[type=text]{background:var(--bg);border:1px solid var(--line);border-radius:6px;color:var(--fg);
+  padding:6px 9px;font-size:12.5px;outline:none;font-family:inherit}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--fg2);cursor:pointer;user-select:none}
+.chk input{width:15px;height:15px;accent-color:var(--acc);cursor:pointer}
+.mini{font-size:11.5px;color:var(--fg3)}
+.kpi{display:flex;gap:12px;flex-wrap:wrap}
+.kpi .k{background:var(--bg3);border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:104px}
+.kpi .k b{display:block;font-size:22px;font-family:var(--mono);line-height:1.2}
+.kpi .k span{font-size:11.5px;color:var(--fg2)}
+.kpi .k.ok b{color:var(--ok)}.kpi .k.err b{color:var(--err)}
+.kpi .k.warn b{color:var(--warn)}.kpi .k.pur b{color:var(--pur)}
+.col3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:1100px){.col3{grid-template-columns:1fr}}
+.res{background:var(--bg3);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.res-h{padding:9px 13px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between}
+.res-h .n{font-family:var(--mono);font-size:12px;color:var(--fg2)}
+.res-b{max-height:520px;overflow:auto;padding:8px}
+.item{background:var(--bg2);border:1px solid #24303f;border-left:3px solid var(--line);
+  border-radius:5px;padding:8px 10px;margin-bottom:6px;font-size:12px;line-height:1.5}
+.item .t{font-weight:600;margin-bottom:2px}
+.item .m{font-family:var(--mono);font-size:11.5px;color:var(--fg2);word-break:break-all}
+.item.fixed{border-left-color:var(--ok)}
+.item.remain{border-left-color:var(--warn)}
+.item.added{border-left-color:var(--err)}
+.item.probable{border-left-color:var(--pur)}
+.sev{display:inline-block;padding:0 6px;border-radius:3px;font-size:10.5px;font-family:var(--mono);margin-right:4px}
+.sv-critical{background:#4a0f14;color:#ff8a8a;border:1px solid #7a1f28}
+.sv-high{background:#4a2410;color:#ffb070;border:1px solid #7a4020}
+.sv-medium{background:#463a10;color:#f5d76e;border:1px solid #6b5a1a}
+.sv-low{background:#12351f;color:#6ee7a0;border:1px solid #1e5c33}
+.sv-info{background:#1a2733;color:#8fa3b8;border:1px solid #2a3646}
+.sv-unknown{background:#1a2733;color:#8fa3b8;border:1px solid #2a3646}
+.up{color:#ff7070}.down{color:#6ee7a0}.same{color:var(--fg3)}
+table.data{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+table.data th,table.data td{border:1px solid var(--line);padding:5px 8px;text-align:left;vertical-align:top}
+table.data th{background:var(--bg3);color:var(--fg2);position:sticky;top:0}
+table.data tr:nth-child(even){background:#131a23}
+.note{background:#152030;border-left:3px solid var(--acc);padding:9px 13px;border-radius:0 6px 6px 0;
+  font-size:12.5px;color:var(--fg2);margin:10px 0}
+.note.warn{background:#2a2113;border-left-color:var(--warn)}
+.badge{font-size:11px;padding:1px 7px;border-radius:3px;font-family:var(--mono)}
+.b-ok{background:#12351f;color:#4ade80;border:1px solid #1e5c33}
+.b-warn{background:#3a2a10;color:#fbbf24;border:1px solid #6b4a15}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(70px);
+  background:var(--acc2);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;
+  opacity:0;transition:.25s;z-index:99;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--err)}
+#aggView{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>初次 vs 复测 <span>漏洞整改核对</span></h1>
+  <div class="sub">两份扫描报告放进去，自动分出「已修复 / 仍存在 / 新增」｜本地处理，不上传</div>
+</header>
+
+<main>
+
+  <!-- 输入 -->
+  <div class="card">
+    <h2>① 导入两份报告 <small>支持本工具的 HTML 报告、厂商 HTML 表格、CSV/TSV</small></h2>
+    <div class="split">
+      <div>
+        <div class="row" style="margin-bottom:6px">
+          <b style="font-size:13px">基线（初次扫描）</b>
+          <button class="btn ghost sm" data-pick="A">选择文件</button>
+          <input type="file" id="fileA" accept=".html,.htm,.csv,.txt,.tsv" style="display:none">
+          <span class="mini" id="infoA">未导入</span>
+        </div>
+        <textarea id="textA" rows="7" placeholder="把初次扫描报告拖进来，或直接粘贴 CSV/HTML"></textarea>
+      </div>
+      <div>
+        <div class="row" style="margin-bottom:6px">
+          <b style="font-size:13px">复测（本轮扫描）</b>
+          <button class="btn ghost sm" data-pick="B">选择文件</button>
+          <input type="file" id="fileB" accept=".html,.htm,.csv,.txt,.tsv" style="display:none">
+          <span class="mini" id="infoB">未导入</span>
+        </div>
+        <textarea id="textB" rows="7" placeholder="把复测扫描报告拖进来，或直接粘贴"></textarea>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnDiff">开始对比</button>
+      <label class="mini">匹配粒度
+        <select id="mode" style="margin-left:6px">
+          <option value="strict" selected>严格：资产+漏洞名+端口+路径</option>
+          <option value="loose">宽松：仅资产+漏洞名</option>
+        </select>
+      </label>
+      <span class="chk"><input type="checkbox" id="ignoreQuery"> 忽略 URL 查询串</span>
+      <span class="mini" id="parseInfo"></span>
+    </div>
+    <div class="note">
+      报告里如果同时出现同一漏洞的多个端口/路径（比如 Log4j 在 8080/8443/9090 各一条），
+      <b>会按端口和路径分别核对</b>——这样「修了 2 个还剩 1 个」也能准确体现。
+    </div>
+  </div>
+
+  <!-- 结果 -->
+  <div class="card" id="resultCard" style="display:none">
+    <h2>② 对比结果 <small>点任意条目可看证据原文</small></h2>
+    <div class="kpi" id="kpi"></div>
+    <div class="row" style="margin:14px 0">
+      <select id="filter">
+        <option value="all">显示全部</option>
+        <option value="newhigh">只看新增高危</option>
+        <option value="high">只看高危及以上</option>
+        <option value="changed">只看等级变化</option>
+      </select>
+      <span class="chk"><input type="checkbox" id="agg"> 按资产聚合</span>
+      <input type="text" id="search" placeholder="搜索 资产 / 漏洞 / CVE" style="max-width:240px">
+      <button class="btn ghost sm" id="btnCsv">导出 CSV</button>
+      <button class="btn ghost sm" id="btnHtml">导出核对报告</button>
+    </div>
+    <div id="cols" class="col3"></div>
+    <div id="aggView"></div>
+    <div id="detail" class="note" style="display:none"></div>
+  </div>
+
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===================== 核心：解析 + 比对（纯函数） ===================== */
+
+var SEV_RANK = { critical: 4, high: 3, medium: 2, low: 1, info: 0, unknown: -1 };
+var SEV_LABEL = { critical: '严重', high: '高危', medium: '中危', low: '低危', info: '信息', unknown: '未知' };
+
+function normSev(v) {
+  var s = String(v == null ? '' : v).trim().toLowerCase();
+  if (!s) return 'unknown';
+  if (/严重|紧急|致命|critical|crit/.test(s)) return 'critical';
+  if (/高危|高风险|high/.test(s)) return 'high';
+  if (/中危|中风险|medium|moderate|mid/.test(s)) return 'medium';
+  if (/低危|低风险|low/.test(s)) return 'low';
+  if (/信息|提示|info|note|无风险/.test(s)) return 'info';
+  return 'unknown';
+}
+
+/* 从报告里找出内嵌的 findings 数组正文。
+   不能用正则 [^\\{\\}]* 切对象——证据字段里常有 ${jndi:ldap://} 这种花括号，
+   正则会把整条对象切断丢掉。这里按引号状态逐个括号配对，字符串内的括号不计数。 */
+function extractArray(html) {
+  var m = html.match(/(?:const|let|var)\s+(\w+)\s*=\s*\[/);
+  if (!m) return null;
+  var start = m.index + m[0].length - 1;      // 指向 '['
+  var depth = 0, q = null, esc = false;
+  for (var i = start; i < html.length; i++) {
+    var c = html.charAt(i);
+    if (q) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === q) { q = null; }
+      continue;
+    }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === '[') { depth++; continue; }
+    if (c === ']') {
+      depth--;
+      if (depth === 0) return html.slice(start + 1, i);
+    }
+  }
+  return null;
+}
+
+/* 把数组正文切成一个个 {…} 对象，同样忽略字符串内的括号 */
+function splitObjects(body) {
+  var out = [], depth = 0, start = -1, q = null, esc = false;
+  for (var i = 0; i < body.length; i++) {
+    var c = body.charAt(i);
+    if (q) {
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { esc = true; continue; }
+      if (c === q) { q = null; }
+      continue;
+    }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === '{') { if (depth === 0) start = i; depth++; continue; }
+    if (c === '}') {
+      depth--;
+      if (depth === 0 && start >= 0) { out.push(body.slice(start, i + 1)); start = -1; }
+      continue;
+    }
+  }
+  return out;
+}
+
+/* 逐字段从一段 {asset:'x', vuln:'y', ...} 里取值，兼容单引号/双引号/数字 */
+function pickField(seg, name) {
+  var re = new RegExp(name + "\\s*:\\s*(?:'((?:[^'\\\\]|\\\\.)*)'|\"((?:[^\"\\\\]|\\\\.)*)\"|(-?\\d+(?:\\.\\d+)?))", 'i');
+  var m = seg.match(re);
+  if (!m) return '';
+  var v = m[1] != null ? m[1] : (m[2] != null ? m[2] : m[3]);
+  return String(v == null ? '' : v).replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\').trim();
+}
+
+/* 从报告 HTML 里抽 findings（内嵌数组 / 静态表格两种来源） */
+function parseReport(html, label) {
+  html = String(html || '');
+  var out = { items: [], source: '', title: '', date: '', meta: {} };
+
+  /* --- 来源 1：内嵌 JS 数组 const findings = [...] --- */
+  var body = extractArray(html);
+  if (body && /asset\s*:|vuln\s*:/.test(body)) {
+    var objs = splitObjects(body);
+    objs.forEach(function (seg) {
+      var asset = pickField(seg, 'asset') || pickField(seg, 'target') || pickField(seg, 'ip');
+      var vuln = pickField(seg, 'vuln') || pickField(seg, 'name') || pickField(seg, 'title');
+      if (!asset && !vuln) return;
+      out.items.push({
+        asset: asset,
+        vuln: vuln,
+        cve: (pickField(seg, 'cve') || '').toUpperCase(),
+        sev: normSev(pickField(seg, 'severity') || pickField(seg, 'level')),
+        port: String(pickField(seg, 'port') || '').replace(/[^\d]/g, ''),
+        path: pickField(seg, 'path') || pickField(seg, 'url') || '',
+        evidence: pickField(seg, 'evidence') || pickField(seg, 'desc') || ''
+      });
+    });
+    out.source = '内嵌数据数组（' + objs.length + ' 条）';
+  }
+
+  /* --- 来源 2：静态 HTML 表格（厂商报告常见） --- */
+  if (!out.items.length) {
+    var dom = new DOMParser().parseFromString(html, 'text/html');
+    var best = null;
+    dom.querySelectorAll('table').forEach(function (tb) {
+      var rows = tb.querySelectorAll('tr');
+      if (rows.length < 2) return;
+      var head = [];
+      rows[0].querySelectorAll('th,td').forEach(function (c) { head.push(c.textContent.trim()); });
+      var score = 0;
+      ['漏洞', 'vuln', '风险', '等级', '资产', '目标', 'ip', 'host', '端口', 'port', '路径', 'path']
+        .forEach(function (kw) {
+          if (head.some(function (h) { return h.toLowerCase().indexOf(kw) >= 0; })) score++;
+        });
+      if (score >= 3 && (!best || score > best.score)) best = { tb: tb, head: head, score: score };
+    });
+    if (best) {
+      function idx(kws) {
+        for (var i = 0; i < best.head.length; i++) {
+          var h = best.head[i].toLowerCase();
+          for (var k = 0; k < kws.length; k++) if (h.indexOf(kws[k]) >= 0) return i;
+        }
+        return -1;
+      }
+      var iAsset = idx(['资产', '目标', '主机', 'ip', 'host', 'asset', 'target']);
+      var iVuln = idx(['漏洞名称', '漏洞', 'vuln', 'name', 'title', '风险名称']);
+      var iCve = idx(['cve']);
+      var iSev = idx(['风险等级', '严重', '等级', 'severity', 'risk', 'level']);
+      var iPort = idx(['端口', 'port']);
+      var iPath = idx(['路径', 'url', 'path', 'uri']);
+      var iEv = idx(['证据', '描述', 'evidence', 'desc']);
+      var rows = best.tb.querySelectorAll('tr');
+      for (var r = 1; r < rows.length; r++) {
+        var tds = rows[r].querySelectorAll('td');
+        if (!tds.length) continue;
+        function cell(i) { return i >= 0 && tds[i] ? tds[i].textContent.trim() : ''; }
+        var asset = cell(iAsset), vuln = cell(iVuln);
+        if (!asset && !vuln) continue;
+        out.items.push({
+          asset: asset, vuln: vuln,
+          cve: cell(iCve).toUpperCase(),
+          sev: normSev(cell(iSev)),
+          port: cell(iPort).replace(/[^\d]/g, ''),
+          path: cell(iPath),
+          evidence: cell(iEv)
+        });
+      }
+      out.source = 'HTML 表格（' + out.items.length + ' 条）';
+    }
+  }
+
+  /* --- 来源 3：CSV / TSV --- */
+  if (!out.items.length && /[,;\t]/.test(html) && !/<html/i.test(html)) {
+    var rows2 = parseDSV(html);
+    if (rows2.length >= 2) {
+      var head2 = rows2[0].map(function (h) { return String(h).toLowerCase(); });
+      function idx2(kws) {
+        for (var i = 0; i < head2.length; i++)
+          for (var k = 0; k < kws.length; k++) if (head2[i].indexOf(kws[k]) >= 0) return i;
+        return -1;
+      }
+      var a = idx2(['资产', '目标', '主机', 'ip', 'host', 'asset']);
+      var v = idx2(['漏洞', 'vuln', 'name', 'title']);
+      var c = idx2(['cve']);
+      var s = idx2(['等级', 'severity', 'risk', 'level']);
+      var p = idx2(['端口', 'port']);
+      var pa = idx2(['路径', 'url', 'path']);
+      var ev = idx2(['证据', '描述', 'evidence', 'desc']);
+      for (var i2 = 1; i2 < rows2.length; i2++) {
+        var row = rows2[i2];
+        if (!row.join('').trim()) continue;
+        out.items.push({
+          asset: a >= 0 ? (row[a] || '').trim() : '',
+          vuln: v >= 0 ? (row[v] || '').trim() : '',
+          cve: c >= 0 ? (row[c] || '').trim().toUpperCase() : '',
+          sev: normSev(s >= 0 ? row[s] : ''),
+          port: p >= 0 ? String(row[p] || '').replace(/[^\d]/g, '') : '',
+          path: pa >= 0 ? (row[pa] || '').trim() : '',
+          evidence: ev >= 0 ? (row[ev] || '').trim() : ''
+        });
+      }
+      out.source = 'CSV（' + out.items.length + ' 条）';
+    }
+  }
+
+  /* 报告抬头信息（用于导出的报告） */
+  var tm = html.match(/<title>([^<]*)<\/title>/i);
+  out.title = tm ? tm[1].trim() : '';
+  var dm = html.match(/扫描时间[：:]\s*<b>([^<]+)<\/b>/) || html.match(/(20\d{2}[-/]\d{1,2}[-/]\d{1,2})/);
+  out.date = dm ? dm[1].trim() : '';
+  var nm = html.match(/报告编号[：:]\s*([^<·\n]+)/);
+  out.meta.no = nm ? nm[1].trim() : '';
+  return out;
+}
+
+function parseDSV(text) {
+  var src = String(text).replace(/^\uFEFF/, '');
+  var first = src.split(/\r?\n/)[0] || '';
+  var delim = [',', '\t', ';', '|'].sort(function (a, b) {
+    return first.split(b).length - first.split(a).length;
+  })[0];
+  var rows = [], row = [], f = '', q = false, i = 0;
+  while (i < src.length) {
+    var ch = src.charAt(i);
+    if (q) {
+      if (ch === '"') {
+        if (src.charAt(i + 1) === '"') { f += '"'; i += 2; continue; }
+        q = false; i++; continue;
+      }
+      f += ch; i++; continue;
+    }
+    if (ch === '"') { q = true; i++; continue; }
+    if (ch === delim) { row.push(f); f = ''; i++; continue; }
+    if (ch === '\r') { i++; continue; }
+    if (ch === '\n') { row.push(f); rows.push(row); row = []; f = ''; i++; continue; }
+    f += ch; i++;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(function (r) {
+    return r.some(function (c) { return String(c).trim() !== ''; });
+  });
+}
+
+function normPath(p, ignoreQuery) {
+  var s = String(p || '').trim();
+  if (!s) return '';
+  s = s.replace(/^[a-z][a-z0-9+.-]*:\/\/[^\/]*/i, '');
+  if (ignoreQuery) s = s.replace(/[?#].*$/, '');
+  s = s.replace(/\/{2,}/g, '/');
+  if (s.length > 1) s = s.replace(/\/+$/, '');
+  if (s.charAt(0) !== '/') s = '/' + s;
+  return s.toLowerCase();
+}
+function normAsset(a) {
+  return String(a || '').trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/:\d+$/, '').replace(/\/.*$/, '');
+}
+function normVuln(v) {
+  return String(v || '').trim().toLowerCase().replace(/\s+/g, '');
+}
+
+function keyOf(item, mode, ignoreQuery) {
+  var a = normAsset(item.asset);
+  var v = normVuln(item.vuln);
+  if (mode === 'loose') return a + '|' + v;
+  return a + '|' + v + '|' + item.port + '|' + normPath(item.path, ignoreQuery);
+}
+
+function dedupe(items, mode, ignoreQuery) {
+  var map = {};
+  items.forEach(function (it) {
+    var k = keyOf(it, mode, ignoreQuery);
+    var prev = map[k];
+    if (!prev || SEV_RANK[it.sev] > SEV_RANK[prev.sev]) map[k] = it;
+  });
+  return map;
+}
+
+function computeDiff(listA, listB, mode, ignoreQuery) {
+  var A = dedupe(listA, mode, ignoreQuery);
+  var B = dedupe(listB, mode, ignoreQuery);
+  var fixed = [], remain = [], added = [], probable = [];
+
+  Object.keys(A).forEach(function (k) {
+    if (B[k]) {
+      remain.push({ base: A[k], cur: B[k], exact: true });
+      delete B[k];
+      return;
+    }
+    /* 严格模式下没匹配上：再用宽松键兜一次，命中的归入「疑似」而不是直接判已修复 */
+    if (mode !== 'loose') {
+      var lk = keyOf(A[k], 'loose', ignoreQuery);
+      var hitKey = Object.keys(B).filter(function (bk) {
+        return keyOf(B[bk], 'loose', ignoreQuery) === lk;
+      })[0];
+      if (hitKey) {
+        probable.push({ base: A[k], cur: B[hitKey], exact: false });
+        delete B[hitKey];
+        return;
+      }
+    }
+    fixed.push(A[k]);
+  });
+  Object.keys(B).forEach(function (k) { added.push(B[k]); });
+
+  return {
+    fixed: fixed, remain: remain, added: added, probable: probable,
+    counts: {
+      a: Object.keys(A).length, b: Object.keys(dedupe(listB, mode, ignoreQuery)).length,
+      fixed: fixed.length, remain: remain.length, added: added.length, probable: probable.length
+    }
+  };
+}
+
+function sevDelta(a, b) {
+  var d = SEV_RANK[b] - SEV_RANK[a];
+  return d > 0 ? 'up' : (d < 0 ? 'down' : 'same');
+}
+function aggregate(diff) {
+  var m = {};
+  function get(a) {
+    var k = a || '(未知资产)';
+    if (!m[k]) m[k] = { asset: k, fixed: 0, remain: 0, added: 0, probable: 0 };
+    return m[k];
+  }
+  diff.fixed.forEach(function (f) { get(f.asset).fixed++; });
+  diff.remain.forEach(function (p) { get(p.base.asset).remain++; });
+  diff.added.forEach(function (f) { get(f.asset).added++; });
+  diff.probable.forEach(function (p) { get(p.base.asset).probable++; });
+  var list = Object.keys(m).map(function (k) { return m[k]; });
+  list.forEach(function (o) { o.cleared = (o.remain === 0 && o.added === 0 && o.probable === 0); });
+  list.sort(function (a, b) { return (b.remain + b.added) - (a.remain + a.added) || b.fixed - a.fixed; });
+  return list;
+}
+
+/* ===================== 界面 ===================== */
+var S = { A: null, B: null, diff: null, meta: { a: '', b: '' } };
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function toast(msg, err) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast on' + (err ? ' err' : '');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(function () { t.className = 'toast'; }, 2600);
+}
+function sevBadge(s) { return '<span class="sev sv-' + s + '">' + (SEV_LABEL[s] || s) + '</span>'; }
+
+document.querySelectorAll('[data-pick]').forEach(function (b) {
+  b.addEventListener('click', function () { $('file' + b.dataset.pick).click(); });
+});
+['A', 'B'].forEach(function (side) {
+  $('file' + side).addEventListener('change', function () {
+    if (!this.files.length) return;
+    var f = this.files[0], self = this;
+    var r = new FileReader();
+    r.onload = function () {
+      $('text' + side).value = String(r.result || '');
+      loadSide(side, f.name);
+    };
+    r.readAsText(f, 'utf-8');
+    self.value = '';
+  });
+});
+
+function loadSide(side, name) {
+  var txt = $('text' + side).value;
+  if (!txt.trim()) return;
+  var res = parseReport(txt, side);
+  if (!res.items.length) {
+    $('info' + side).textContent = '未能识别漏洞条目';
+    toast('这份文件里没解析到漏洞条目，确认是扫描报告？', true);
+    return;
+  }
+  S[side] = res.items;
+  S.meta[side] = res.title || name || '';
+  $('info' + side).textContent = res.items.length + ' 条 · ' + res.source;
+  if (side === 'A') $('parseInfo').textContent = '';
+}
+
+$('btnDiff').addEventListener('click', function () {
+  /* 没点过「选择文件」就直接粘贴的，这里兜一次解析 */
+  if (!S.A && $('textA').value.trim()) loadSide('A', '');
+  if (!S.B && $('textB').value.trim()) loadSide('B', '');
+  if (!S.A || !S.B) { toast('两份报告都要先导入', true); return; }
+  S.diff = computeDiff(S.A, S.B, $('mode').value, $('ignoreQuery').checked);
+  $('resultCard').style.display = 'block';
+  render();
+  toast('对比完成');
+});
+
+$('mode').addEventListener('change', function () { if (S.diff) $('btnDiff').click(); });
+$('ignoreQuery').addEventListener('change', function () { if (S.diff) $('btnDiff').click(); });
+['filter', 'agg'].forEach(function (id) {
+  $(id).addEventListener('change', render);
+});
+$('search').addEventListener('input', function () {
+  clearTimeout(window.__tid);
+  window.__tid = setTimeout(render, 220);
+});
+
+function passFilter(item) {
+  var f = $('filter').value;
+  var kw = $('search').value.trim().toLowerCase();
+  if (f === 'newhigh' && !(item.sev === 'high' || item.sev === 'critical')) return false;
+  if (f === 'high' && !(item.sev === 'high' || item.sev === 'critical')) return false;
+  if (kw) {
+    var hay = (item.asset + ' ' + item.vuln + ' ' + item.cve + ' ' + item.path).toLowerCase();
+    if (hay.indexOf(kw) < 0) return false;
+  }
+  return true;
+}
+
+function itemHtml(it, kind) {
+  var isPair = (kind === 'remain' || kind === 'probable');
+  var f = isPair ? it.base : it;
+  var html = '<div class="item ' + kind + '" data-k="' + esc(keyOf(f, 'strict', false)) + '">';
+  html += '<div class="t">' + esc(f.vuln || '(未命名)') + '</div>';
+  html += '<div class="m">' + esc(f.asset || '(未知资产)') + (f.port ? ':' + esc(f.port) : '') + '</div>';
+  if (f.cve) html += '<div class="m">' + esc(f.cve) + '</div>';
+  if (f.path) html += '<div class="m">' + esc(f.path) + '</div>';
+  if (isPair) {
+    var d = sevDelta(it.base.sev, it.cur.sev);
+    var arrow = d === 'up' ? '<span class="up">↑ 升级</span>'
+      : (d === 'down' ? '<span class="down">↓ 降级</span>' : '<span class="same">= 不变</span>');
+    html += '<div style="margin-top:4px">' + sevBadge(it.base.sev) + '→ ' + sevBadge(it.cur.sev) + ' ' + arrow + '</div>';
+    if (kind === 'probable') {
+      html += '<div class="mini" style="color:#c4b5fd">端口/路径有变化，需人工确认是否同一漏洞</div>';
+    }
+  } else {
+    html += '<div style="margin-top:4px">' + sevBadge(f.sev) + '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+function render() {
+  var d = S.diff;
+  if (!d) return;
+  var c = d.counts;
+  $('kpi').innerHTML =
+    '<div class="k"><b>' + c.a + '</b><span>初测条数</span></div>' +
+    '<div class="k"><b>' + c.b + '</b><span>复测条数</span></div>' +
+    '<div class="k ok"><b>' + c.fixed + '</b><span>已修复</span></div>' +
+    '<div class="k warn"><b>' + c.remain + '</b><span>仍存在</span></div>' +
+    '<div class="k err"><b>' + c.added + '</b><span>新增</span></div>' +
+    '<div class="k pur"><b>' + c.probable + '</b><span>疑似（待人工）</span></div>';
+
+  var fixedF = d.fixed.filter(passFilter);
+  var remainF = d.remain.filter(function (p) { return passFilter(p.base) || passFilter(p.cur); });
+  var addedF = d.added.filter(passFilter);
+  var probF = d.probable.filter(function (p) { return passFilter(p.base) || passFilter(p.cur); });
+
+  /* 只看等级变化时，只保留 remain 里 sevDelta != same 的 */
+  if ($('filter').value === 'changed') {
+    remainF = remainF.filter(function (p) { return sevDelta(p.base.sev, p.cur.sev) !== 'same'; });
+    fixedF = []; addedF = [];
+  }
+
+  function col(title, arr, kind) {
+    var body = arr.length ? arr.map(function (it) { return itemHtml(it, kind); }).join('')
+      : '<div class="mini" style="padding:12px;text-align:center">没有条目</div>';
+    return '<div class="res"><div class="res-h">' + title + '<span class="n">' + arr.length + '</span></div>'
+      + '<div class="res-b">' + body + '</div></div>';
+  }
+  $('cols').innerHTML = col('✅ 已修复', fixedF, 'fixed')
+    + col('⚠️ 仍存在', remainF, 'remain')
+    + col('🆕 新增', addedF, 'added');
+  if (probF.length) $('cols').innerHTML += col('❓ 疑似（需人工）', probF, 'probable');
+
+  if ($('agg').checked) {
+    $('cols').style.display = 'none';
+    $('aggView').style.display = 'block';
+    var agg = aggregate(d);
+    var rows = agg.map(function (o) {
+      return '<tr><td>' + esc(o.asset) + '</td><td>' + o.fixed + '</td><td>' + o.remain + '</td><td>'
+        + o.added + '</td><td>' + o.probable + '</td><td>'
+        + (o.cleared ? '<span class="badge b-ok">已清零</span>' : '<span class="badge b-warn">未清零</span>')
+        + '</td></tr>';
+    }).join('');
+    $('aggView').innerHTML = '<table class="data"><thead><tr><th>资产</th><th>已修复</th><th>仍存在</th>'
+      + '<th>新增</th><th>疑似</th><th>状态</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  } else {
+    $('cols').style.display = '';
+    $('aggView').style.display = 'none';
+  }
+
+  /* 点条目看证据 */
+  document.querySelectorAll('#cols .item').forEach(function (el) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function () {
+      var k = el.dataset.k;
+      var all = [];
+      d.fixed.forEach(function (x) { all.push({ it: x, tag: '初测（复测已消失）' }); });
+      d.remain.forEach(function (p) { all.push({ it: p.base, tag: '初测' }); all.push({ it: p.cur, tag: '复测' }); });
+      d.added.forEach(function (x) { all.push({ it: x, tag: '复测（新增）' }); });
+      d.probable.forEach(function (p) { all.push({ it: p.base, tag: '初测' }); all.push({ it: p.cur, tag: '复测' }); });
+      var hit = all.filter(function (o) { return keyOf(o.it, 'strict', false) === k; });
+      var box = $('detail');
+      box.style.display = 'block';
+      box.innerHTML = '<b>证据原文</b><br>' + hit.map(function (o) {
+        return '<div style="margin-top:6px"><span class="mini">[' + o.tag + ']</span> '
+          + sevBadge(o.it.sev) + '<br><span style="font-family:var(--mono);font-size:11.5px">'
+          + esc(o.it.evidence || '（报告里没有证据字段）') + '</span></div>';
+      }).join('');
+    });
+  });
+}
+
+/* ---------- 导出 ---------- */
+function stamp() {
+  var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); };
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes());
+}
+function download(name, content, mime) {
+  var blob = new Blob([content], { type: (mime || 'text/plain') + ';charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+
+$('btnCsv').addEventListener('click', function () {
+  if (!S.diff) return;
+  var d = S.diff;
+  function e(v) {
+    v = String(v == null ? '' : v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  var out = ['状态,资产,端口,漏洞名称,CVE,初测等级,复测等级,路径,证据'];
+  d.fixed.forEach(function (f) { out.push(['已修复', f.asset, f.port, f.vuln, f.cve, SEV_LABEL[f.sev], '', f.path, f.evidence].map(e).join(',')); });
+  d.remain.forEach(function (p) { out.push(['仍存在', p.base.asset, p.base.port, p.base.vuln, p.base.cve, SEV_LABEL[p.base.sev], SEV_LABEL[p.cur.sev], p.base.path, p.cur.evidence || p.base.evidence].map(e).join(',')); });
+  d.added.forEach(function (f) { out.push(['新增', f.asset, f.port, f.vuln, f.cve, '', SEV_LABEL[f.sev], f.path, f.evidence].map(e).join(',')); });
+  d.probable.forEach(function (p) { out.push(['疑似', p.base.asset, p.base.port, p.base.vuln, p.base.cve, SEV_LABEL[p.base.sev], SEV_LABEL[p.cur.sev], p.base.path, p.cur.evidence].map(e).join(',')); });
+  download('整改核对-' + stamp() + '.csv', '\uFEFF' + out.join('\n'), 'text/csv');
+  toast('CSV 已导出');
+});
+
+$('btnHtml').addEventListener('click', function () {
+  if (!S.diff) return;
+  var d = S.diff, c = d.counts;
+  function E(s) { return esc(s); }
+  var H = [];
+  H.push('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>漏洞整改核对报告</title><style>');
+  H.push('body{font:13.5px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;max-width:1000px;margin:0 auto;padding:32px 24px;color:#222}');
+  H.push('h1{font-size:22px;border-bottom:2px solid #333;padding-bottom:10px}');
+  H.push('h2{font-size:16px;margin-top:26px;border-bottom:1px solid #e3e8ee;padding-bottom:5px}');
+  H.push('table{border-collapse:collapse;width:100%;margin:12px 0;font-size:12.5px}');
+  H.push('th,td{border:1px solid #ccd4de;padding:6px 9px;text-align:left;vertical-align:top}');
+  H.push('th{background:#f2f5f8}.meta{color:#888;font-size:12px;margin-bottom:20px}');
+  H.push('.p{color:#137333;font-weight:600}.f{color:#c5221f;font-weight:600}.w{color:#b06000;font-weight:600}.m{color:#6b4fa8}');
+  H.push('.box{background:#f7f9fb;border-left:3px solid #1a73a7;padding:10px 14px;margin:12px 0;font-size:12.5px}');
+  H.push('</style></head><body>');
+  H.push('<h1>漏洞整改核对报告（初测 vs 复测）</h1>');
+  H.push('<div class="meta">生成时间：' + new Date().toLocaleString('zh-CN')
+    + ' ｜ 基线：' + E(S.meta.A || '初次扫描') + ' ｜ 复测：' + E(S.meta.B || '复测扫描')
+    + ' ｜ 匹配粒度：' + ($('mode').value === 'strict' ? '资产+漏洞名+端口+路径' : '资产+漏洞名') + '</div>');
+  H.push('<h2>一、总体结论</h2>');
+  H.push('<div class="box">初测 <b>' + c.a + '</b> 条，复测 <b>' + c.b + '</b> 条；'
+    + '已修复 <b class="p">' + c.fixed + '</b> 条，仍存在 <b class="w">' + c.remain + '</b> 条，'
+    + '新增 <b class="f">' + c.added + '</b> 条'
+    + (c.probable ? '，疑似待人工确认 <b class="m">' + c.probable + '</b> 条' : '')
+    + '。整改率 ' + (c.a ? Math.round(c.fixed * 100 / c.a) : 0) + '%。</div>');
+  function table(title, arr, pair) {
+    H.push('<h2>' + title + '（' + arr.length + '）</h2>');
+    if (!arr.length) { H.push('<div class="box">无。</div>'); return; }
+    H.push('<table><thead><tr><th>资产</th><th>端口</th><th>漏洞名称</th><th>CVE</th>'
+      + (pair ? '<th>初测→复测等级</th>' : '<th>等级</th>') + '<th>路径</th></tr></thead><tbody>');
+    arr.forEach(function (x) {
+      var f = pair ? x.base : x, cur = pair ? x.cur : x;
+      H.push('<tr><td>' + E(f.asset) + '</td><td>' + E(f.port) + '</td><td>' + E(f.vuln) + '</td>'
+        + '<td>' + E(f.cve || '-') + '</td><td>' + (pair
+          ? SEV_LABEL[f.sev] + ' → ' + SEV_LABEL[cur.sev]
+          : SEV_LABEL[f.sev]) + '</td><td>' + E(f.path || '-') + '</td></tr>');
+    });
+    H.push('</tbody></table>');
+  }
+  table('二、已修复', d.fixed, false);
+  table('三、仍存在', d.remain, true);
+  table('四、新增', d.added, false);
+  if (d.probable.length) table('五、疑似（端口/路径有变化，需人工确认）', d.probable, true);
+  H.push('<h2>六、说明</h2><div class="box">本报告由两份扫描报告自动比对生成，'
+    + '匹配键为「资产 + 漏洞名' + ($('mode').value === 'strict' ? ' + 端口 + 路径' : '') + '」。'
+    + '「已修复」指复测报告中不再出现该条目，仍需结合人工复测确认；'
+    + '「疑似」为端口或路径发生变化、无法自动判定是否同一漏洞的条目。</div>');
+  H.push('</body></html>');
+  download('整改核对报告-' + stamp() + '.html', H.join('\n'), 'text/html');
+  toast('核对报告已导出');
+});
+</script>
+</body>
+</html>
